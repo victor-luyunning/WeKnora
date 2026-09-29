@@ -43,6 +43,10 @@ const defaultMessages = {
   tokenRefreshFailed: 'Token refresh failed',
 }
 
+function frontendBasePath(): string {
+  return (import.meta.env?.BASE_URL || '/').replace(/\/+$/, '')
+}
+
 export class StreamAuthError extends Error {
   constructor(readonly status: number) {
     super(`HTTP ${status}`)
@@ -58,14 +62,17 @@ export function isStreamAuthError(err: unknown): boolean {
 
 export function isEmbedPage(): boolean {
   if (typeof window === 'undefined') return false
-  return window.location.pathname.startsWith('/embed/')
+  const base = frontendBasePath()
+  return window.location.pathname.startsWith(`${base}/embed/`)
 }
 
 export function redirectToLogin() {
   if (typeof window === 'undefined') return
-  if (window.location.pathname === '/login') return
+  const base = frontendBasePath()
+  const loginPath = `${base}/login` || '/login'
+  if (window.location.pathname === loginPath) return
   if (isEmbedPage()) return
-  window.location.href = '/login'
+  window.location.href = loginPath
 }
 
 export function clearAuthStorage() {

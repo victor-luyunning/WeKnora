@@ -348,7 +348,7 @@ function confirmLeaveTenant() {
         if (resp.success) {
           MessagePlugin.success(t('tenantMember.leave.success'))
           authStore.logout()
-          window.location.href = '/login'
+          window.location.href = `${import.meta.env.BASE_URL}login`
         } else {
           MessagePlugin.error(resp.message || t('tenantMember.errors.generic'))
         }
@@ -413,7 +413,7 @@ async function deleteCurrentTenant() {
         return
       }
       authStore.logout()
-      window.location.href = '/login'
+      window.location.href = `${import.meta.env.BASE_URL}login`
     } else {
       MessagePlugin.error(resp.message || t('tenant.deleteDangerZone.failed'))
     }

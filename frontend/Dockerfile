@@ -29,8 +29,10 @@ WORKDIR /frontend
 
 ARG NPM_REGISTRY=
 ARG NODE_MAX_OLD_SPACE_SIZE=4096
+ARG VITE_BASE_PATH=/
 
 ENV VITE_IS_DOCKER=true
+ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 # Vite production builds of this SPA routinely exceed Node's default heap.
 ENV NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}"
 

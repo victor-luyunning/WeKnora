@@ -29,6 +29,14 @@ function resolveFrontendCommit(): string {
 
 const FRONTEND_COMMIT = resolveFrontendCommit()
 
+function normalizeBasePath(raw: string | undefined): string {
+  const value = raw?.trim() || '/'
+  if (value === '/') return '/'
+  return `/${value.replace(/^\/+|\/+$/g, '')}/`
+}
+
+const FRONTEND_BASE_PATH = normalizeBasePath(process.env.VITE_BASE_PATH)
+
 /** Dev parity with nginx: serve embed.html for /embed/:channelId (not the main SPA). */
 function embedHtmlDevFallback(): Plugin {
   return {
@@ -68,6 +76,7 @@ function resolveVueOfficePptxEntry(): string {
 }
 
 export default defineConfig({
+  base: FRONTEND_BASE_PATH,
   define: {
     __FRONTEND_VERSION__: JSON.stringify(FRONTEND_VERSION),
     __FRONTEND_COMMIT__: JSON.stringify(FRONTEND_COMMIT),
@@ -128,7 +137,9 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    // FMS owns the neighboring 5173 dev port; keep WeKnora independently
+    // reachable behind FMS /zswek during local development.
+    port: Number(process.env.VITE_PORT || 5174),
     host: true,
     // 代理配置，用于开发环境
     proxy: {
