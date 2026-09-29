@@ -70,8 +70,8 @@
           </span>
         </div>
         <t-empty v-if="overview.mirrors.length === 0" :description="t('system.globalSettings.fmsBridge.mirrors.empty')" />
-        <div v-else class="data-table-shell">
-          <t-table row-key="id" :data="overview.mirrors" :columns="columns" hover @row-click="openDetail">
+        <div v-else class="data-table-shell fms-bridge__table-shell">
+          <t-table class="fms-bridge__table" row-key="id" :data="overview.mirrors" :columns="columns" hover @row-click="openDetail">
             <template #book="{ row }">
               <div class="fms-bridge__book">
                 <strong>{{ row.book.title || t('system.globalSettings.fmsBridge.mirrors.untitled') }}</strong>
@@ -86,12 +86,12 @@
             <template #retrieval_unit_count="{ row }"><span>{{ row.retrieval_unit_count }}</span></template>
             <template #last_synced_at="{ row }"><span class="fms-bridge__time">{{ formatTime(row.last_synced_at) }}</span></template>
             <template #action="{ row }">
-              <t-space size="small">
+              <div class="fms-bridge__table-actions">
                 <t-button variant="text" size="small" @click.stop="openDetail(row)">{{ t('system.globalSettings.fmsBridge.mirrors.inspect') }}</t-button>
                 <t-button variant="text" size="small" :loading="retryingMirrorId === row.id" :disabled="Boolean(retryingMirrorId)" @click.stop="retryMirror(row)">
                   {{ t('system.globalSettings.fmsBridge.actions.retryMirror') }}
                 </t-button>
-              </t-space>
+              </div>
             </template>
           </t-table>
         </div>
@@ -186,7 +186,7 @@ const columns = computed(() => [
   { colKey: 'readiness_status', title: t('system.globalSettings.fmsBridge.mirrors.columns.readiness'), width: 150 },
   { colKey: 'retrieval_unit_count', title: t('system.globalSettings.fmsBridge.mirrors.columns.units'), width: 120 },
   { colKey: 'last_synced_at', title: t('system.globalSettings.fmsBridge.mirrors.columns.syncedAt'), width: 180 },
-  { colKey: 'action', title: '', width: 88, fixed: 'right' as const },
+  { colKey: 'action', title: '', width: 172, fixed: 'right' as const },
 ])
 
 const reload = async () => {
@@ -272,9 +272,14 @@ onMounted(() => { void reload() })
 .fms-bridge__run--completed { color: var(--td-success-color); }
 .fms-bridge__mirror-list { padding-top: 4px; }
 .fms-bridge__updated { color: var(--td-text-color-secondary); font-size: 13px; display: inline-flex; gap: 5px; align-items: center; }
+.fms-bridge__table-shell { max-width: 100%; overflow-x: auto; border: 1px solid var(--td-component-stroke); border-radius: var(--app-radius-lg); background: var(--td-bg-color-container); }
+.fms-bridge__table-shell :deep(.t-table) { min-width: 872px; }
+.fms-bridge__table-shell :deep(.t-table th), .fms-bridge__table-shell :deep(.t-table td) { vertical-align: middle; }
+.fms-bridge__table-actions { display: inline-flex; align-items: center; gap: 12px; min-width: 150px; white-space: nowrap; }
 .fms-bridge__book { display: grid; gap: 3px; min-width: 0; }
 .fms-bridge__book strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fms-bridge__book span, .fms-bridge__time { color: var(--td-text-color-secondary); font-size: 12px; }
+.fms-bridge__time { white-space: nowrap; }
 .fms-bridge__drawer-loading, .fms-bridge__drawer-empty { padding: 30px; text-align: center; color: var(--td-text-color-secondary); }
 .fms-bridge__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 0; }
 .fms-bridge__fields div { min-width: 0; }
