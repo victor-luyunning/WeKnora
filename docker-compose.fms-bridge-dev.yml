@@ -1,0 +1,6 @@
+# Local FMS bridge validation only: the mirror stores JSON sidecars in ordinary
+# PostgreSQL tables and does not depend on ParadeDB or any vector extension.
+# Keep the main development Compose file unchanged for normal WeKnora work.
+services:
+  postgres:
+    image: docker.m.daocloud.io/library/postgres:16-alpine

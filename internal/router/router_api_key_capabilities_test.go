@@ -52,6 +52,7 @@ func TestPlatformControlPlaneRoutesDeclarePlatformCapabilities(t *testing.T) {
 	g := &rbacGuards{}
 	v1 := gin.New().Group("/api/v1")
 	RegisterSystemAdminRoutes(v1, &handler.SystemHandler{}, nil, g)
+	RegisterFMSBridgeRoutes(v1, &handler.FMSBridgeHandler{}, g)
 
 	cases := []struct {
 		method     string
@@ -61,8 +62,12 @@ func TestPlatformControlPlaneRoutesDeclarePlatformCapabilities(t *testing.T) {
 		{http.MethodGet, "/api/v1/system/admin/settings", types.APIKeyCapabilitySystemSettingsRead},
 		{http.MethodPut, "/api/v1/system/admin/settings/:key", types.APIKeyCapabilitySystemSettingsManage},
 		{http.MethodGet, "/api/v1/system/admin/runtime/queues", types.APIKeyCapabilitySystemRuntimeRead},
+		{http.MethodGet, "/api/v1/system/admin/fms-bridge", types.APIKeyCapabilitySystemRuntimeRead},
+		{http.MethodGet, "/api/v1/system/admin/fms-bridge/mirrors/:id", types.APIKeyCapabilitySystemRuntimeRead},
+		{http.MethodPost, "/api/v1/system/admin/fms-bridge/mirrors/:id/reconcile", types.APIKeyCapabilitySystemRuntimeManage},
 		{http.MethodPost, "/api/v1/system/admin/runtime/queues/:queue/tasks/:task_id/actions/:action", types.APIKeyCapabilitySystemRuntimeManage},
 		{http.MethodDelete, "/api/v1/system/admin/runtime/queues/:queue/archived", types.APIKeyCapabilitySystemRuntimeManage},
+		{http.MethodPost, "/api/v1/system/admin/fms-bridge/reconcile", types.APIKeyCapabilitySystemRuntimeManage},
 	}
 	for _, tc := range cases {
 		policy := mustLookupAPIKeyPolicy(t, g, tc.method, tc.path)

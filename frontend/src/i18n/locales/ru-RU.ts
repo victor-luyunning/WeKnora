@@ -284,7 +284,7 @@ export default {
         target: 'Цель',
         path: 'Запрос',
         outcome: 'Результат'
-      }
+      },
     },
     errors: {
       emailRequired: 'Укажите email',
@@ -3539,6 +3539,7 @@ export default {
           description: 'Системные администраторы, открытая регистрация и правила создания пространств.'
         }
       },
+      fmsBridge: { navLabel: 'FMS Bridge', title: 'FMS projection mirror', description: 'Inspect the read-only projection mirrored from FMS and trigger an explicit reconciliation.', actions: { sync: 'Sync now', refresh: 'Refresh', retry: 'Retry', retryMirror: 'Retry book' }, notConfigured: { title: 'FMS source is not configured', description: 'Set the deployment-owned FMS source profile before starting a sync.' }, summary: { title: 'Mirror summary', mirrors: 'Mirrored versions', lastStatus: 'Latest run', lastSuccess: 'Last succeeded', lastFailed: 'Last failed', noRun: 'Not run yet', failureDetails: 'Failure details' }, mirrors: { title: 'Mirrored source books', description: 'This is a local, rebuildable mirror.', empty: 'No FMS projection has been mirrored yet.', untitled: 'Untitled FMS book', inspect: 'Inspect', columns: { book: 'Source book', readiness: 'FMS readiness', units: 'Retrieval units', syncedAt: 'Last synced' } }, detail: { title: 'FMS mirror detail', source: 'Source identity', bookNo: 'Book number', subject: 'Subject', sourceRef: 'Source reference', revision: 'Revision key', artifacts: 'Published artifacts', available: 'Available', unavailable: 'Unavailable', units: 'Retrieval-unit preview', unitsDescription: 'A bounded preview of the body projection.' }, messages: { queued: 'FMS reconciliation has been queued.', mirrorQueued: 'The book reconciliation has been queued.' }, errors: { load: 'Failed to load the FMS mirror.', sync: 'Failed to queue FMS reconciliation.', detail: 'Failed to load FMS mirror detail.', mirrorSync: 'Failed to queue the book reconciliation.' } },
       priorityHint: {
         disclosure: 'Источник и приоритет конфигурации',
         tier1: 'Параметры, сохранённые на этой странице (с пометкой «Переопределено»), всегда имеют приоритет — переменная окружения для них игнорируется.',

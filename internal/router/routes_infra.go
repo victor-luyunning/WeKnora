@@ -6,7 +6,22 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/Tencent/WeKnora/internal/handler"
+	"github.com/Tencent/WeKnora/internal/types"
 )
+
+// RegisterFMSBridgeRoutes keeps the FMS publishing mirror out of tenant data
+// source routes. It is a platform-wide, explicit, read-only source pull.
+func RegisterFMSBridgeRoutes(r *gin.RouterGroup, h *handler.FMSBridgeHandler, g *rbacGuards) {
+	admin := r.Group("/system/admin/fms-bridge", g.SystemAdmin())
+	g.apiKeyRoute(admin, http.MethodGet, "",
+		apiKeyPlatform(types.APIKeyCapabilitySystemRuntimeRead, types.APIKeyCapabilitySystemRuntimeManage), h.Overview)
+	g.apiKeyRoute(admin, http.MethodGet, "/mirrors/:id",
+		apiKeyPlatform(types.APIKeyCapabilitySystemRuntimeRead, types.APIKeyCapabilitySystemRuntimeManage), h.MirrorDetail)
+	g.apiKeyRoute(admin, http.MethodPost, "/mirrors/:id/reconcile",
+		apiKeyPlatform(types.APIKeyCapabilitySystemRuntimeManage), h.ReconcileMirror)
+	g.apiKeyRoute(admin, http.MethodPost, "/reconcile",
+		apiKeyPlatform(types.APIKeyCapabilitySystemRuntimeManage), h.Reconcile)
+}
 
 // Models are tenant-wide infrastructure (LLM credentials, embeddings,
 // rerankers); Viewer+ for reads, Admin+ for any mutation. Credential

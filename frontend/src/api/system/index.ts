@@ -24,6 +24,89 @@ export async function deletePlatformAPIKey(keyId: number): Promise<{ success: bo
   return await del(`/api/v1/system/admin/api-keys/${keyId}`) as unknown as { success: boolean }
 }
 
+export interface FMSBookMetadata {
+  book_no: string
+  title: string
+  subject: string
+}
+
+export interface FMSSyncRunMetrics {
+  seen: number
+  succeeded: number
+  skipped: number
+  failed: number
+  failures?: Record<string, string>
+}
+
+export interface FMSSyncRunSummary {
+  id: string
+  status: string
+  started_at: string
+  finished_at?: string
+  summary: FMSSyncRunMetrics
+  error_message?: string
+}
+
+export interface FMSMirrorSummary {
+  id: string
+  source_ref: string
+  revision_key: string
+  archive_record_id: string
+  asset_id: string
+  book: FMSBookMetadata
+  projection_state: string
+  readiness_status: string
+  handoff_eligible: boolean
+  retrieval_unit_count: number
+  last_synced_at: string
+}
+
+export interface FMSBridgeOverview {
+  enabled: boolean
+  configuration_issue?: string
+  mirror_count: number
+  latest_run?: FMSSyncRunSummary
+  mirrors: FMSMirrorSummary[]
+}
+
+export interface FMSArtifact {
+  kind: string
+  required: boolean
+  available: boolean
+  sha256: string
+  record_count?: number
+}
+
+export interface FMSRetrievalUnitPreview {
+  unit_id: string
+  ordinal: number
+  structural_node_id: string
+  content_type: string
+  content_text: string
+  locator: Record<string, unknown>
+}
+
+export interface FMSMirrorDetail extends FMSMirrorSummary {
+  artifacts: FMSArtifact[]
+  retrieval_units: FMSRetrievalUnitPreview[]
+}
+
+export function getFMSBridgeOverview(limit = 30): Promise<FMSBridgeOverview> {
+  return get(`/api/v1/system/admin/fms-bridge?limit=${limit}`)
+}
+
+export function getFMSBridgeMirrorDetail(id: string, limit = 50): Promise<FMSMirrorDetail> {
+  return get(`/api/v1/system/admin/fms-bridge/mirrors/${encodeURIComponent(id)}?limit=${limit}`)
+}
+
+export function triggerFMSBridgeMirrorReconcile(id: string): Promise<{ success: boolean; data?: { task_id: string; status: string } }> {
+  return post(`/api/v1/system/admin/fms-bridge/mirrors/${encodeURIComponent(id)}/reconcile`, {})
+}
+
+export function triggerFMSBridgeReconcile(): Promise<{ success: boolean; data?: { task_id: string; status: string } }> {
+  return post('/api/v1/system/admin/fms-bridge/reconcile', {})
+}
+
 export interface SystemInfo {
   version: string
   edition?: string
