@@ -4,6 +4,7 @@
 FROM python:3.10.18-bookworm AS builder
 
 ARG APT_MIRROR=""
+ARG PYTHON_PACKAGE_INDEX="https://mirrors.aliyun.com/pypi/simple/"
 RUN mirror="$APT_MIRROR"; \
     if [ -n "$mirror" ]; then \
         case "$mirror" in http://*|https://*) ;; *) mirror="http://$mirror" ;; esac; \
@@ -11,6 +12,10 @@ RUN mirror="$APT_MIRROR"; \
     fi
 
 WORKDIR /app
+
+ENV UV_LINK_MODE=copy \
+    PIP_INDEX_URL="$PYTHON_PACKAGE_INDEX" \
+    UV_INDEX_URL="$PYTHON_PACKAGE_INDEX"
 
 # 安装构建依赖
 RUN apt-get update && apt-get install -y \
@@ -66,7 +71,7 @@ RUN if [ -z "$TARGETARCH" ]; then \
 
 # 复制依赖文件
 COPY docreader/pyproject.toml docreader/uv.lock ./
-RUN pip install uv --break-system-packages && \
+RUN pip install --no-cache-dir uv==0.5.31 --break-system-packages && \
     python -m uv sync --locked --no-dev
 
 # 复制源代码和生成脚本

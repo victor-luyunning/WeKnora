@@ -161,6 +161,10 @@ WEKNORA_VERSION=0.8.0
 GIN_MODE=release
 AUTO_MIGRATE=true
 
+# 构建阶段镜像源：APT 与 Python pip/uv 分开配置
+APT_MIRROR=mirrors.aliyun.com
+PYTHON_PACKAGE_INDEX=https://mirrors.aliyun.com/pypi/simple/
+
 # WeKnora frontend：FMS frontend 代理到这里
 FRONTEND_PORT=18083
 FRONTEND_BIND_ADDRESS=127.0.0.1

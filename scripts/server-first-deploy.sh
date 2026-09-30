@@ -74,12 +74,13 @@ values = {
     "FMS_SERVICE_TOKEN": token,
     "FMS_PAGE_SIZE": "100",
     "FMS_REQUEST_TIMEOUT": "30s",
-    "APK_MIRROR_ARG": "mirrors.tencent.com",
-    "APT_MIRROR": "http://mirrors.tencent.com",
+    "APT_MIRROR": "mirrors.aliyun.com",
+    "PYTHON_PACKAGE_INDEX": "https://mirrors.aliyun.com/pypi/simple/",
     "GOPROXY_ARG": "https://goproxy.cn,direct",
 }
 
 lines = text.splitlines()
+lines = [line for line in lines if not line.startswith("APK_MIRROR_ARG=")]
 for key, value in values.items():
     pattern = re.compile(rf"^{re.escape(key)}=.*$")
     replacement = f"{key}={value}"

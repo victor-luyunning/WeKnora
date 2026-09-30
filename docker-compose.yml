@@ -40,7 +40,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.app
       args:
-        - APK_MIRROR_ARG=${APK_MIRROR_ARG:-mirrors.tencent.com}
+        - APT_MIRROR=${APT_MIRROR:-mirrors.aliyun.com}
         - GOPROXY_ARG=${GOPROXY_ARG:-https://goproxy.cn,direct}
         - WITH_ANYDOC=${WITH_ANYDOC:-1}
     container_name: WeKnora-app
@@ -356,7 +356,6 @@ services:
       - WEKNORA_ASYNQ_SHARED_CONCURRENCY=${WEKNORA_ASYNQ_SHARED_CONCURRENCY:-6}
       - WEKNORA_WIKI_ASYNQ_CONCURRENCY=${WEKNORA_WIKI_ASYNQ_CONCURRENCY:-8}
       - WEKNORA_MODEL_MAX_CONCURRENCY=${WEKNORA_MODEL_MAX_CONCURRENCY:-32}
-      - APK_MIRROR_ARG=${APK_MIRROR_ARG:-}
       - WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL=${WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL:-}
       # ========== OIDC 认证（可选，OIDC_AUTH_ENABLE=true 启用，详见 .env.example）==========
       - OIDC_AUTH_ENABLE=${OIDC_AUTH_ENABLE:-false}
@@ -407,7 +406,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile.docreader
       args:
-        - APT_MIRROR=${APT_MIRROR:-http://mirrors.tencent.com}
+        - APT_MIRROR=${APT_MIRROR:-mirrors.aliyun.com}
+        - PYTHON_PACKAGE_INDEX=${PYTHON_PACKAGE_INDEX:-https://mirrors.aliyun.com/pypi/simple/}
     container_name: WeKnora-docreader
     # docreader gRPC ships without auth/TLS and is only consumed by the app
     # container over the WeKnora-network (DOCREADER_ADDR defaults to

@@ -141,6 +141,7 @@ build_app_image() {
         --build-arg GOPRIVATE_ARG=${GOPRIVATE:-""} \
         --build-arg GOPROXY_ARG=${GOPROXY:-"https://goproxy.cn,direct"} \
         --build-arg GOSUMDB_ARG=${GOSUMDB:-"off"} \
+        --build-arg APT_MIRROR=${APT_MIRROR:-mirrors.aliyun.com} \
         --build-arg VERSION_ARG="$VERSION" \
         --build-arg COMMIT_ID_ARG="$COMMIT_ID" \
         --build-arg BUILD_TIME_ARG="$BUILD_TIME" \
@@ -169,7 +170,8 @@ build_docreader_image() {
         --platform $PLATFORM \
         --build-arg PLATFORM=$PLATFORM \
         --build-arg TARGETARCH=$TARGETARCH \
-        --build-arg APT_MIRROR=${APT_MIRROR:-} \
+        --build-arg APT_MIRROR=${APT_MIRROR:-mirrors.aliyun.com} \
+        --build-arg PYTHON_PACKAGE_INDEX=${PYTHON_PACKAGE_INDEX:-https://mirrors.aliyun.com/pypi/simple/} \
         -f docker/Dockerfile.docreader \
         -t wechatopenai/weknora-docreader:latest \
         .

@@ -1,8 +1,8 @@
 # Build extension and daemon from the same pinned source on the runtime architecture.
 FROM --platform=$TARGETPLATFORM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS browserskill
 WORKDIR /build
-ARG APK_MIRROR_ARG
-RUN mirror="$APK_MIRROR_ARG"; \
+ARG APT_MIRROR
+RUN mirror="$APT_MIRROR"; \
     if [ -n "$mirror" ]; then \
         case "$mirror" in http://*|https://*) ;; *) mirror="http://$mirror" ;; esac; \
         sed -i -E "s@https?://deb\\.debian\\.org@${mirror}@g; s@https?://security\\.debian\\.org@${mirror}@g" /etc/apt/sources.list.d/debian.sources; \
@@ -28,7 +28,7 @@ WORKDIR /app
 ARG GOPRIVATE_ARG
 ARG GOPROXY_ARG
 ARG GOSUMDB_ARG=off
-ARG APK_MIRROR_ARG
+ARG APT_MIRROR
 
 # 设置Go环境变量
 ENV GOPRIVATE=${GOPRIVATE_ARG}
@@ -36,7 +36,7 @@ ENV GOPROXY=${GOPROXY_ARG}
 ENV GOSUMDB=${GOSUMDB_ARG}
 
 # Install dependencies
-RUN mirror="$APK_MIRROR_ARG"; \
+RUN mirror="$APT_MIRROR"; \
     if [ -n "$mirror" ]; then \
         case "$mirror" in http://*|https://*) ;; *) mirror="http://$mirror" ;; esac; \
         sed -i -E "s@https?://deb\\.debian\\.org@${mirror}@g; s@https?://security\\.debian\\.org@${mirror}@g" /etc/apt/sources.list.d/debian.sources; \
@@ -98,7 +98,7 @@ FROM debian:12.12-slim
 
 WORKDIR /app
 
-ARG APK_MIRROR_ARG
+ARG APT_MIRROR
 
 # Pairing derives the gateway URL from the user's page origin by default.
 ENV BROWSERSKILL_BINARY=/opt/weknora/browserskill/bsk \
@@ -110,7 +110,7 @@ RUN useradd -m -s /bin/bash appuser
 
 # Use the configured mirror before the first apt request as well. The server
 # may not be able to reach deb.debian.org directly.
-RUN mirror="$APK_MIRROR_ARG"; \
+RUN mirror="$APT_MIRROR"; \
     if [ -n "$mirror" ]; then \
         case "$mirror" in http://*|https://*) ;; *) mirror="http://$mirror" ;; esac; \
         sed -i -E "s@https?://deb\\.debian\\.org@${mirror}@g; s@https?://security\\.debian\\.org@${mirror}@g" /etc/apt/sources.list.d/debian.sources; \
