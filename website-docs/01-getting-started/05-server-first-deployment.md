@@ -54,7 +54,7 @@ ssh -T git@github.com
 
 ```bash
 cd /srv/weknora
-git pull --ff-only personal fms-weknora
+git pull --ff-only origin fms-weknora
 bash scripts/server-first-deploy.sh
 ```
 
