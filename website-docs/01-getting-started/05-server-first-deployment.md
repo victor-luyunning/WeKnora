@@ -17,21 +17,40 @@ WeKnora 不新增公网端口，也不占用 FMS 的 `18082`。`18083` 只供服
 
 ## 1. 创建 WeKnora 项目环境
 
-服务器上的 WeKnora 项目目录按现有发布方式准备。本文不指定 Git 仓库地址，也不要求重新 clone 上游仓库。
+第一次部署从当前项目的个人仓库拉取 `fms-weknora` 分支，不要拉取腾讯上游仓库。
 
-以下用 `<WEKNORA_PROJECT_DIR>` 表示服务器上当前这份 WeKnora 项目目录；不要把它替换成腾讯上游仓库。
+当前项目仓库：
+
+```text
+git@github.com:victor-luyunning/WeKnora.git
+```
+
+服务器项目目录使用 `/srv/weknora`：
 
 ```bash
-cd <WEKNORA_PROJECT_DIR>
-cp .env.example .env       # 只在第一次创建环境文件时执行
+sudo mkdir -p /srv/weknora
+sudo chown -R "$USER":"$USER" /srv/weknora
+
+git clone --branch fms-weknora --single-branch \
+  git@github.com:victor-luyunning/WeKnora.git \
+  /srv/weknora
+
+cd /srv/weknora
+cp .env.example .env
 chmod 600 .env
 ```
 
-如果服务器已经有 `.env`，不要覆盖它；直接编辑现有文件。代码同步、分支切换或镜像发布沿用你们现有的项目发布流程。
+服务器需要提前配置 GitHub Deploy Key，确认：
+
+```bash
+ssh -T git@github.com
+```
+
+如果服务器已经有 `/srv/weknora`，不要再次 clone；进入该目录确认当前分支是 `fms-weknora`，并且只在 `.env` 不存在时执行 `cp .env.example .env`。
 
 ## 2. 配置 WeKnora `.env`
 
-编辑 `<WEKNORA_PROJECT_DIR>/.env`，至少设置：
+编辑 `/srv/weknora/.env`，至少设置：
 
 ```dotenv
 WEKNORA_VERSION=0.8.0
@@ -95,7 +114,7 @@ DISABLE_REGISTRATION=false
 服务器使用当前项目根目录的标准 `docker-compose.yml`，并且必须从当前项目源码构建镜像。不能只执行 `docker compose pull`，否则会使用仓库声明的远程镜像，当前项目的代码修改不会进入镜像：
 
 ```bash
-cd <WEKNORA_PROJECT_DIR>
+cd /srv/weknora
 docker compose -f docker-compose.yml config --quiet
 docker compose -f docker-compose.yml build --pull app frontend docreader
 docker compose -f docker-compose.yml up -d
@@ -193,7 +212,7 @@ https://<FMS外部域名>/zswek/
 先在服务器本机验证 WeKnora：
 
 ```bash
-cd <WEKNORA_PROJECT_DIR>
+cd /srv/weknora
 curl -fsS http://127.0.0.1:8080/health
 curl -fsSI http://127.0.0.1:18083/
 ```
@@ -211,7 +230,7 @@ curl -I https://<FMS外部域名>/zswek/
 WeKnora 服务：
 
 ```bash
-cd <WEKNORA_PROJECT_DIR>
+cd /srv/weknora
 docker compose -f docker-compose.yml ps
 docker compose -f docker-compose.yml logs --tail=300 app
 docker compose -f docker-compose.yml logs --tail=200 frontend postgres redis docreader
@@ -235,8 +254,10 @@ sh scripts/compose.sh production logs --tail=200 frontend
 ## 7. 更新当前项目
 
 ```bash
-cd <WEKNORA_PROJECT_DIR>
-# 先按现有项目发布流程把当前项目代码同步到这里
+cd /srv/weknora
+git fetch origin fms-weknora
+git checkout fms-weknora
+git pull --ff-only origin fms-weknora
 docker compose -f docker-compose.yml config --quiet
 docker compose -f docker-compose.yml build --pull app frontend docreader
 docker compose -f docker-compose.yml up -d
