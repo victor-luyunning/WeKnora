@@ -48,6 +48,100 @@ ssh -T git@github.com
 
 如果服务器已经有 `/srv/weknora`，不要再次 clone；进入该目录确认当前分支是 `fms-weknora`，并且只在 `.env` 不存在时执行 `cp .env.example .env`。
 
+如果刚刚已经执行了上面的 `cp` 和 `chmod`，可以直接执行下面这一整段。它会从 FMS 生产环境文件读取外部域名和桥接 token，补齐 WeKnora 生产参数，校验 Compose，然后构建并启动当前源码；已有非示例密钥会保留：
+
+```bash
+cd /srv/weknora
+
+FMS_ENV=/srv/fms/app/.env.docker.production
+FMS_ORIGIN="$(grep '^CORS_ALLOWED_ORIGINS=' "$FMS_ENV" | head -n1 | cut -d= -f2- | tr -d '\"' | cut -d, -f1)"
+FMS_TOKEN="$(grep '^FMS_WEKNORA_BRIDGE_TOKEN=' "$FMS_ENV" | head -n1 | cut -d= -f2- | tr -d '\"' | tr -d '\r')"
+
+if [ -z "$FMS_ORIGIN" ] || [ -z "$FMS_TOKEN" ]; then
+  echo "缺少 FMS 外部域名或桥接 token。请检查："
+  echo "  $FMS_ENV"
+  echo "  CORS_ALLOWED_ORIGINS=..."
+  echo "  FMS_WEKNORA_BRIDGE_TOKEN=..."
+  exit 1
+fi
+
+export FMS_ORIGIN FMS_TOKEN
+python3 - <<'PY'
+from pathlib import Path
+import os
+import re
+import secrets
+
+path = Path(".env")
+text = path.read_text(encoding="utf-8")
+origin = os.environ["FMS_ORIGIN"].rstrip("/")
+token = os.environ["FMS_TOKEN"]
+
+def current(key):
+    match = re.search(rf"(?m)^{re.escape(key)}=(.*)$", text)
+    return match.group(1).strip() if match else ""
+
+def keep_or_generate(key, length):
+    value = current(key)
+    examples = {"postgres123!@#", "redis123!@#", "", "latest"}
+    if value and value not in examples and not value.startswith("<"):
+        return value
+    return secrets.token_hex(length)
+
+values = {
+    "WEKNORA_VERSION": "0.8.0",
+    "GIN_MODE": "release",
+    "AUTO_MIGRATE": "true",
+    "FRONTEND_PORT": "18083",
+    "FRONTEND_BIND_ADDRESS": "127.0.0.1",
+    "VITE_BASE_PATH": "/zswek/",
+    "APP_BIND_ADDRESS": "127.0.0.1",
+    "FRONTEND_BASE_URL": f"{origin}/zswek",
+    "APP_EXTERNAL_URL": f"{origin}/zswek",
+    "DB_DRIVER": "postgres",
+    "DB_HOST": "postgres",
+    "DB_PORT": "5432",
+    "DB_USER": "weknora",
+    "DB_PASSWORD": keep_or_generate("DB_PASSWORD", 24),
+    "DB_NAME": "weknora",
+    "STREAM_MANAGER_TYPE": "redis",
+    "REDIS_ADDR": "redis:6379",
+    "REDIS_PASSWORD": keep_or_generate("REDIS_PASSWORD", 24),
+    "RETRIEVE_DRIVER": "postgres",
+    "STORAGE_TYPE": "local",
+    "LOCAL_STORAGE_BASE_DIR": "/data/files",
+    "JWT_SECRET": keep_or_generate("JWT_SECRET", 32),
+    "SYSTEM_AES_KEY": keep_or_generate("SYSTEM_AES_KEY", 16),
+    "DISABLE_REGISTRATION": "false",
+    "FMS_BASE_URL": "http://host.docker.internal:18002",
+    "FMS_SERVICE_TOKEN": token,
+    "FMS_PAGE_SIZE": "100",
+    "FMS_REQUEST_TIMEOUT": "30s",
+}
+
+lines = text.splitlines()
+for key, value in values.items():
+    pattern = re.compile(rf"^{re.escape(key)}=.*$")
+    replacement = f"{key}={value}"
+    for index, line in enumerate(lines):
+        if pattern.match(line):
+            lines[index] = replacement
+            break
+    else:
+        lines.append(replacement)
+
+path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+PY
+
+chmod 600 .env
+docker compose -f docker-compose.yml config --quiet
+docker compose -f docker-compose.yml build --pull app frontend docreader
+docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose.yml ps
+```
+
+这段命令只依赖 FMS 已经写好的两个值：`CORS_ALLOWED_ORIGINS` 和 `FMS_WEKNORA_BRIDGE_TOKEN`。如果 FMS 的 `CORS_ALLOWED_ORIGINS` 还是示例中的 `localhost`，先把它改成实际浏览器访问的外部 origin；不能把 `127.0.0.1:18082` 当成外网地址。
+
 ## 2. 配置 WeKnora `.env`
 
 编辑 `/srv/weknora/.env`，至少设置：
