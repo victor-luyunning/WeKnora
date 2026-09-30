@@ -2,8 +2,10 @@
 FROM --platform=$TARGETPLATFORM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS browserskill
 WORKDIR /build
 ARG APK_MIRROR_ARG
-RUN if [ -n "$APK_MIRROR_ARG" ]; then \
-        sed -i "s@deb.debian.org@${APK_MIRROR_ARG}@g" /etc/apt/sources.list.d/debian.sources; \
+RUN mirror="$APK_MIRROR_ARG"; \
+    if [ -n "$mirror" ]; then \
+        case "$mirror" in http://*|https://*) ;; *) mirror="http://$mirror" ;; esac; \
+        sed -i -E "s@https?://deb\\.debian\\.org@${mirror}@g; s@https?://security\\.debian\\.org@${mirror}@g" /etc/apt/sources.list.d/debian.sources; \
     fi && \
     apt-get update && \
     apt-get install -y --no-install-recommends git python3 ca-certificates curl build-essential cmake pkg-config && \
@@ -34,8 +36,10 @@ ENV GOPROXY=${GOPROXY_ARG}
 ENV GOSUMDB=${GOSUMDB_ARG}
 
 # Install dependencies
-RUN if [ -n "$APK_MIRROR_ARG" ]; then \
-        sed -i "s@deb.debian.org@${APK_MIRROR_ARG}@g" /etc/apt/sources.list.d/debian.sources; \
+RUN mirror="$APK_MIRROR_ARG"; \
+    if [ -n "$mirror" ]; then \
+        case "$mirror" in http://*|https://*) ;; *) mirror="http://$mirror" ;; esac; \
+        sed -i -E "s@https?://deb\\.debian\\.org@${mirror}@g; s@https?://security\\.debian\\.org@${mirror}@g" /etc/apt/sources.list.d/debian.sources; \
     fi && \
     apt-get update && \
     apt-get install -y git build-essential libsqlite3-dev curl
@@ -106,18 +110,17 @@ RUN useradd -m -s /bin/bash appuser
 
 # Use the configured mirror before the first apt request as well. The server
 # may not be able to reach deb.debian.org directly.
-RUN if [ -n "$APK_MIRROR_ARG" ]; then \
-        sed -i "s@deb.debian.org@${APK_MIRROR_ARG}@g" /etc/apt/sources.list.d/debian.sources; \
+RUN mirror="$APK_MIRROR_ARG"; \
+    if [ -n "$mirror" ]; then \
+        case "$mirror" in http://*|https://*) ;; *) mirror="http://$mirror" ;; esac; \
+        sed -i -E "s@https?://deb\\.debian\\.org@${mirror}@g; s@https?://security\\.debian\\.org@${mirror}@g" /etc/apt/sources.list.d/debian.sources; \
     fi && \
     apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Then switch to mirror if specified and install other packages
-RUN if [ -n "$APK_MIRROR_ARG" ]; then \
-        sed -i "s@deb.debian.org@${APK_MIRROR_ARG}@g" /etc/apt/sources.list.d/debian.sources; \
-    fi && \
-    apt-get update && \
+# Install the remaining runtime packages from the already configured mirror.
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential postgresql-client default-mysql-client tzdata sed curl bash vim wget \
         libsqlite3-0 \
