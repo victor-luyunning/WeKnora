@@ -50,6 +50,16 @@ ssh -T git@github.com
 
 如果刚刚已经执行了上面的 `cp` 和 `chmod`，可以直接执行下面这一整段。它会从 FMS 生产环境文件读取外部域名和桥接 token，补齐 WeKnora 生产参数，校验 Compose，然后构建并启动当前源码；已有非示例密钥会保留：
 
+仓库已经提供同样逻辑的脚本。服务器拉取最新 `fms-weknora` 后，优先直接执行：
+
+```bash
+cd /srv/weknora
+git pull --ff-only personal fms-weknora
+bash scripts/server-first-deploy.sh
+```
+
+下面的完整展开版用于需要逐行查看或排错的情况。
+
 ```bash
 cd /srv/weknora
 
