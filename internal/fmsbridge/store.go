@@ -22,8 +22,9 @@ const (
 
 // GormStore is WeKnora's rebuildable projection mirror. It stores only data
 // fetched from FMS's controlled API, never archive files or storage paths.
-// A source revision is immutable: a newer revision creates another mirror row
-// and never overwrites a last-known-good revision.
+// archive_record_id + asset_id identifies one FMS projection item; a newer
+// source revision replaces that item's mirror and child rows instead of
+// creating history. source_ref remains the FMS traceable locator.
 type GormStore struct {
 	db *gorm.DB
 }
@@ -46,63 +47,101 @@ func (s *GormStore) UpsertSnapshot(ctx context.Context, snapshot Snapshot) error
 	now := time.Now().UTC()
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var existing mirrorRow
-		err := tx.Where("source_system = ? AND source_ref = ? AND revision_key = ?", sourceSystemFMS, snapshot.SourceRef, snapshot.Revision.RevisionKey).
-			First(&existing).Error
+		err := tx.Where("source_system = ? AND archive_record_id = ? AND asset_id = ?", sourceSystemFMS, snapshot.ArchiveRecordID, snapshot.AssetID).
+			Order("last_synced_at DESC, created_at DESC, id DESC").First(&existing).Error
 		if err == nil {
-			return tx.Model(&mirrorRow{}).Where("id = ?", existing.ID).Updates(map[string]any{
-				"last_synced_at": now,
-				"updated_at":     now,
-			}).Error
+			if err := tx.Where("mirror_id = ?", existing.ID).Delete(&artifactRow{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Where("mirror_id = ?", existing.ID).Delete(&retrievalUnitRow{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&mirrorRow{}).Where("id = ?", existing.ID).Updates(mirrorValues(snapshot, now)).Error; err != nil {
+				return err
+			}
+			mirrorID := existing.ID
+			return insertMirrorChildren(tx, mirrorID, artifacts, units)
 		}
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 
-		mirror := mirrorRow{
-			ID:                   uuid.NewString(),
-			SourceSystem:         sourceSystemFMS,
-			SourceRef:            snapshot.SourceRef,
-			RevisionKey:          snapshot.Revision.RevisionKey,
-			ArchiveRecordID:      snapshot.ArchiveRecordID,
-			AssetID:              snapshot.AssetID,
-			BookNo:               snapshot.Book.BookNo,
-			BookTitle:            snapshot.Book.Title,
-			BookSubject:          snapshot.Book.Subject,
-			SourceChecksumSHA256: snapshot.Revision.SourceChecksumSHA256,
-			ParserVersion:        snapshot.Revision.ParserVersion,
-			SegmentPolicyVersion: snapshot.Revision.SegmentPolicyVersion,
-			EmbeddingPolicy:      snapshot.Revision.EmbeddingPolicy,
-			ProjectionState:      snapshot.ProjectionState,
-			ReadinessStatus:      snapshot.ReadinessStatus,
-			HandoffEligible:      snapshot.HandoffEligible,
-			Artifacts:            mustJSON(snapshot.Artifacts),
-			CreatedAt:            now,
-			UpdatedAt:            now,
-			LastSyncedAt:         now,
-		}
+		mirror := mirrorRowFromSnapshot(snapshot, now)
 		if err := tx.Create(&mirror).Error; err != nil {
 			return err
 		}
-		for index := range artifacts {
-			artifacts[index].ID = uuid.NewString()
-			artifacts[index].MirrorID = mirror.ID
-		}
-		for index := range units {
-			units[index].ID = uuid.NewString()
-			units[index].MirrorID = mirror.ID
-		}
-		if len(artifacts) > 0 {
-			if err := tx.CreateInBatches(artifacts, 500).Error; err != nil {
-				return err
-			}
-		}
-		if len(units) > 0 {
-			if err := tx.CreateInBatches(units, 500).Error; err != nil {
-				return err
-			}
-		}
-		return nil
+		return insertMirrorChildren(tx, mirror.ID, artifacts, units)
 	})
+}
+
+func mirrorRowFromSnapshot(snapshot Snapshot, now time.Time) mirrorRow {
+	return mirrorRow{
+		ID:                   uuid.NewString(),
+		SourceSystem:         sourceSystemFMS,
+		SourceRef:            snapshot.SourceRef,
+		RevisionKey:          snapshot.Revision.RevisionKey,
+		ArchiveRecordID:      snapshot.ArchiveRecordID,
+		AssetID:              snapshot.AssetID,
+		BookNo:               snapshot.Book.BookNo,
+		BookTitle:            snapshot.Book.Title,
+		BookSubject:          snapshot.Book.Subject,
+		SourceChecksumSHA256: snapshot.Revision.SourceChecksumSHA256,
+		ParserVersion:        snapshot.Revision.ParserVersion,
+		SegmentPolicyVersion: snapshot.Revision.SegmentPolicyVersion,
+		EmbeddingPolicy:      snapshot.Revision.EmbeddingPolicy,
+		ProjectionState:      snapshot.ProjectionState,
+		ReadinessStatus:      snapshot.ReadinessStatus,
+		HandoffEligible:      snapshot.HandoffEligible,
+		Artifacts:            mustJSON(snapshot.Artifacts),
+		CreatedAt:            now,
+		UpdatedAt:            now,
+		LastSyncedAt:         now,
+	}
+}
+
+func mirrorValues(snapshot Snapshot, now time.Time) map[string]any {
+	return map[string]any{
+		"source_system":          sourceSystemFMS,
+		"source_ref":             snapshot.SourceRef,
+		"revision_key":           snapshot.Revision.RevisionKey,
+		"archive_record_id":      snapshot.ArchiveRecordID,
+		"asset_id":               snapshot.AssetID,
+		"book_no":                snapshot.Book.BookNo,
+		"book_title":             snapshot.Book.Title,
+		"book_subject":           snapshot.Book.Subject,
+		"source_checksum_sha256": snapshot.Revision.SourceChecksumSHA256,
+		"parser_version":         snapshot.Revision.ParserVersion,
+		"segment_policy_version": snapshot.Revision.SegmentPolicyVersion,
+		"embedding_policy":       snapshot.Revision.EmbeddingPolicy,
+		"projection_state":       snapshot.ProjectionState,
+		"readiness_status":       snapshot.ReadinessStatus,
+		"handoff_eligible":       snapshot.HandoffEligible,
+		"artifacts":              mustJSON(snapshot.Artifacts),
+		"updated_at":             now,
+		"last_synced_at":         now,
+	}
+}
+
+func insertMirrorChildren(tx *gorm.DB, mirrorID string, artifacts []artifactRow, units []retrievalUnitRow) error {
+	for index := range artifacts {
+		artifacts[index].ID = uuid.NewString()
+		artifacts[index].MirrorID = mirrorID
+	}
+	for index := range units {
+		units[index].ID = uuid.NewString()
+		units[index].MirrorID = mirrorID
+	}
+	if len(artifacts) > 0 {
+		if err := tx.CreateInBatches(artifacts, 500).Error; err != nil {
+			return err
+		}
+	}
+	if len(units) > 0 {
+		if err := tx.CreateInBatches(units, 500).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // BeginRun and FinishRun let Reconciler expose explainable per-run outcomes

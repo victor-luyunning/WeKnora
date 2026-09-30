@@ -2,6 +2,8 @@
 
 WeKnora 支持 Docker Compose、Kubernetes Helm、Lite 单二进制和桌面应用。服务器部署可选择 Compose 或 Helm；本地使用可选择 Lite；参与开发时使用独立的开发编排。各方式的依赖、启动命令和数据目录如下。
 
+> 如果这是服务器第一次部署，请先看[服务器首次部署](./05-server-first-deployment.md)。本文是完整部署参考；首次部署按那一页的顺序执行即可。
+
 ## 部署形态总览
 
 | 形态 | 入口 | 数据库 | 队列/流 | 适用场景 |

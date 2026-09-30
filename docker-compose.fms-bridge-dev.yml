@@ -1,6 +1,47 @@
-# Local FMS bridge validation only: the mirror stores JSON sidecars in ordinary
-# PostgreSQL tables and does not depend on ParadeDB or any vector extension.
-# Keep the main development Compose file unchanged for normal WeKnora work.
+# Local FMS bridge validation: keep the application in Docker Desktop as a
+# named, restartable service while reusing the isolated dev PostgreSQL/Redis.
 services:
+  fms-weknora:
+    # Use the already-cached Go toolchain for local bridge development. The
+    # production Debian image remains unchanged; this avoids a registry mirror
+    # failure preventing the service from appearing in Docker Desktop.
+    image: weknora-fms-bridge-builder:local
+    container_name: fms-weknora
+    working_dir: /workspace
+    command: ["go", "run", "./cmd/server"]
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      REDIS_ADDR: redis:6379
+      FMS_BASE_URL: http://host.docker.internal:8000
+      LOCAL_STORAGE_BASE_DIR: /data/files
+      GOMODCACHE: /go/pkg/mod
+      GOCACHE: /go-build
+    ports:
+      - "${FMS_WEKNORA_BIND_ADDRESS:-127.0.0.1}:${FMS_WEKNORA_PORT:-8080}:8080"
+    volumes:
+      - .:/workspace
+      - ./.local-data/files:/data/files
+      - /Users/luyunning/go/pkg/mod:/go/pkg/mod
+      - /Users/luyunning/Library/Caches/go-build:/go-build
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - WeKnora-network-dev
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
   postgres:
     image: docker.m.daocloud.io/library/postgres:16-alpine

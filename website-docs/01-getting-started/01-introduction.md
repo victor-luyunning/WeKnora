@@ -156,6 +156,7 @@ flowchart LR
 
 ## 下一步
 
+- [服务器首次部署](./05-server-first-deployment.md)：从零准备 Linux 服务器、创建 `.env`、启动 Compose 并完成首轮验收。
 - [安装部署](./02-installation.md)：选择部署方式并启动服务。
 - [快速上手](./03-quickstart.md)：创建知识库、上传文档并完成首次问答。
 - [配置详解](./04-configuration.md)：查询部署参数与配置优先级。

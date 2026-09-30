@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS uq_fms_projection_mirrors_source_asset;

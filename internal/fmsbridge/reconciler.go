@@ -6,7 +6,7 @@ import (
 )
 
 // MirrorStore commits a complete Snapshot atomically. An implementation must
-// not delete or replace a prior successful revision until every required FMS
+// not delete or replace the current projection item until every required FMS
 // sidecar for the incoming revision has been fetched and validated.
 type MirrorStore interface {
 	UpsertSnapshot(ctx context.Context, snapshot Snapshot) error

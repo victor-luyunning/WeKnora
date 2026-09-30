@@ -25,6 +25,8 @@ const (
 
 // RequiredArtifactKinds is the FMS contract's complete body projection. OCR
 // intentionally does not appear here: it is a non-blocking optional sidecar.
+// media_relations is required as a published sidecar, but may contain zero
+// records when FMS has no images or other media for the projection.
 var RequiredArtifactKinds = []string{
 	ArtifactKindDirectory,
 	ArtifactKindCanonical,
@@ -240,7 +242,7 @@ func (s Snapshot) validate() error {
 		return fmt.Errorf("snapshot is not eligible for handoff")
 	}
 	for _, kind := range RequiredArtifactKinds {
-		if len(s.Sidecars[kind]) == 0 {
+		if kind != ArtifactKindMediaRelations && len(s.Sidecars[kind]) == 0 {
 			return fmt.Errorf("required FMS sidecar %q is empty", kind)
 		}
 	}
