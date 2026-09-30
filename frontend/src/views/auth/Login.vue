@@ -102,6 +102,16 @@
 
     <!-- Header Links - Top Right -->
     <div class="header-links">
+      <a href="/" class="header-link" title="返回主页" aria-label="返回主页">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="m3 10 9-7 9 7" />
+          <path d="M5 9v11h14V9" />
+          <path d="M9 20v-6h6v6" />
+        </svg>
+        <span class="link-text">返回主页</span>
+      </a>
+
       <a href="https://weknora.weixin.qq.com" target="_blank" class="header-link" :title="$t('common.website')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
           stroke-linecap="round">
