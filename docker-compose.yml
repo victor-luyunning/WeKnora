@@ -40,7 +40,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.app
       args:
-        - APK_MIRROR_ARG=${APK_MIRROR_ARG:-}
+        - APK_MIRROR_ARG=${APK_MIRROR_ARG:-mirrors.tencent.com}
         - GOPROXY_ARG=${GOPROXY_ARG:-https://goproxy.cn,direct}
         - WITH_ANYDOC=${WITH_ANYDOC:-1}
     container_name: WeKnora-app
@@ -407,7 +407,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.docreader
       args:
-        - APT_MIRROR=${APT_MIRROR:-}
+        - APT_MIRROR=${APT_MIRROR:-http://mirrors.tencent.com}
     container_name: WeKnora-docreader
     # docreader gRPC ships without auth/TLS and is only consumed by the app
     # container over the WeKnora-network (DOCREADER_ADDR defaults to

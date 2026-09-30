@@ -74,6 +74,8 @@ values = {
     "FMS_SERVICE_TOKEN": token,
     "FMS_PAGE_SIZE": "100",
     "FMS_REQUEST_TIMEOUT": "30s",
+    "APK_MIRROR_ARG": "mirrors.tencent.com",
+    "APT_MIRROR": "http://mirrors.tencent.com",
     "GOPROXY_ARG": "https://goproxy.cn,direct",
 }
 
