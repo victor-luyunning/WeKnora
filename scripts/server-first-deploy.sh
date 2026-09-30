@@ -74,6 +74,7 @@ values = {
     "FMS_SERVICE_TOKEN": token,
     "FMS_PAGE_SIZE": "100",
     "FMS_REQUEST_TIMEOUT": "30s",
+    "GOPROXY_ARG": "https://goproxy.cn,direct",
 }
 
 lines = text.splitlines()
