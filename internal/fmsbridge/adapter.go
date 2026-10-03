@@ -162,7 +162,7 @@ func (a *Adapter) FetchArtifact(ctx context.Context, ref ProjectionRef, kind str
 			"asset_id": []string{ref.AssetID},
 			"kind":     []string{kind},
 			"page":     []string{strconv.Itoa(pageNumber)},
-			"limit":    []string{strconv.Itoa(a.config.PageSize)},
+			"limit":    []string{strconv.Itoa(a.config.ArtifactPageSize)},
 		}, &data)
 		if err != nil {
 			return nil, err

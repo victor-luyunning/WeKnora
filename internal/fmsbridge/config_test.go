@@ -11,16 +11,17 @@ func TestConfigFromLookupKeepsBridgeDisabledWithoutBaseURL(t *testing.T) {
 
 func TestConfigFromLookupAcceptsBoundedDeploymentSettings(t *testing.T) {
 	values := map[string]string{
-		envFMSBaseURL:      "https://fms.example.test/",
-		envFMSServiceToken: "service-token",
-		envFMSPageSize:     "50",
-		envFMSTimeout:      "15s",
+		envFMSBaseURL:          "https://fms.example.test/",
+		envFMSServiceToken:     "service-token",
+		envFMSPageSize:         "50",
+		envFMSArtifactPageSize: "1000",
+		envFMSTimeout:          "15s",
 	}
 	config, enabled, err := configFromLookup(func(key string) string { return values[key] })
 	if err != nil || !enabled {
 		t.Fatalf("config=%#v enabled=%v err=%v", config, enabled, err)
 	}
-	if config.BaseURL != "https://fms.example.test" || config.PageSize != 50 || config.Timeout.String() != "15s" {
+	if config.BaseURL != "https://fms.example.test" || config.PageSize != 50 || config.ArtifactPageSize != 1000 || config.Timeout.String() != "15s" {
 		t.Fatalf("config=%#v", config)
 	}
 }

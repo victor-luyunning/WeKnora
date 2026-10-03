@@ -36,6 +36,9 @@ func TestAdapterFetchesEligibleProjectionAndAllRequiredSidecars(t *testing.T) {
 		case "/api/v1/knowledge-projections/record-review/artifact-preview":
 			kind := r.URL.Query().Get("kind")
 			page := r.URL.Query().Get("page")
+			if got := r.URL.Query().Get("limit"); got != "1" {
+				t.Fatalf("artifact preview limit = %q, want 1", got)
+			}
 			if kind == "retrieval_units" && page == "1" {
 				writeFMSResponse(t, w, map[string]any{
 					"archive_record_id": "record-review",
@@ -59,7 +62,12 @@ func TestAdapterFetchesEligibleProjectionAndAllRequiredSidecars(t *testing.T) {
 	}))
 	defer server.Close()
 
-	adapter, err := NewAdapter(Config{BaseURL: server.URL, ServiceToken: "service-token", PageSize: 1})
+	adapter, err := NewAdapter(Config{
+		BaseURL:          server.URL,
+		ServiceToken:     "service-token",
+		PageSize:         1,
+		ArtifactPageSize: 1,
+	})
 	if err != nil {
 		t.Fatalf("NewAdapter() error = %v", err)
 	}

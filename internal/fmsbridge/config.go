@@ -9,10 +9,11 @@ import (
 )
 
 const (
-	envFMSBaseURL      = "FMS_BASE_URL"
-	envFMSServiceToken = "FMS_SERVICE_TOKEN"
-	envFMSPageSize     = "FMS_PAGE_SIZE"
-	envFMSTimeout      = "FMS_REQUEST_TIMEOUT"
+	envFMSBaseURL          = "FMS_BASE_URL"
+	envFMSServiceToken     = "FMS_SERVICE_TOKEN"
+	envFMSPageSize         = "FMS_PAGE_SIZE"
+	envFMSArtifactPageSize = "FMS_ARTIFACT_PAGE_SIZE"
+	envFMSTimeout          = "FMS_REQUEST_TIMEOUT"
 )
 
 // ConfigFromEnvironment leaves the bridge disabled when FMS_BASE_URL is not
@@ -34,6 +35,13 @@ func configFromLookup(lookup func(string) string) (Config, bool, error) {
 			return Config{}, false, fmt.Errorf("%s must be an integer from 1 to 100", envFMSPageSize)
 		}
 		config.PageSize = value
+	}
+	if raw := strings.TrimSpace(lookup(envFMSArtifactPageSize)); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil || value < 1 || value > 1000 {
+			return Config{}, false, fmt.Errorf("%s must be an integer from 1 to 1000", envFMSArtifactPageSize)
+		}
+		config.ArtifactPageSize = value
 	}
 	if raw := strings.TrimSpace(lookup(envFMSTimeout)); raw != "" {
 		value, err := time.ParseDuration(raw)

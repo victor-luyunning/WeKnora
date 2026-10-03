@@ -38,11 +38,12 @@ var RequiredArtifactKinds = []string{
 // Config is deployment-owned source configuration. The service token is only
 // ever sent as a Bearer header and is never copied into a Snapshot or log.
 type Config struct {
-	BaseURL      string
-	ServiceToken string
-	HTTPClient   *http.Client
-	PageSize     int
-	Timeout      time.Duration
+	BaseURL          string
+	ServiceToken     string
+	HTTPClient       *http.Client
+	PageSize         int
+	ArtifactPageSize int
+	Timeout          time.Duration
 }
 
 func (c Config) normalized() (Config, error) {
@@ -67,6 +68,12 @@ func (c Config) normalized() (Config, error) {
 	}
 	if c.PageSize > 100 {
 		return Config{}, fmt.Errorf("FMS page size must not exceed 100")
+	}
+	if c.ArtifactPageSize <= 0 {
+		c.ArtifactPageSize = 1000
+	}
+	if c.ArtifactPageSize > 1000 {
+		return Config{}, fmt.Errorf("FMS artifact page size must not exceed 1000")
 	}
 	if c.Timeout <= 0 {
 		c.Timeout = 30 * time.Second
