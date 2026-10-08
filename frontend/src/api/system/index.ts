@@ -95,13 +95,14 @@ export interface FMSMirrorDetail extends FMSMirrorSummary {
 
 export interface FMSBridgeMirrorFilters {
   page?: number
+  page_size?: 20 | 50 | 100
   query?: string
   readiness_status?: string
   handoff_eligible?: boolean
 }
 
 export function getFMSBridgeOverview(filters: FMSBridgeMirrorFilters = {}): Promise<FMSBridgeOverview> {
-  const params = new URLSearchParams({ page: String(filters.page || 1), page_size: '100' })
+  const params = new URLSearchParams({ page: String(filters.page || 1), page_size: String(filters.page_size || 100) })
   if (filters.query?.trim()) params.set('query', filters.query.trim())
   if (filters.readiness_status) params.set('readiness_status', filters.readiness_status)
   if (filters.handoff_eligible !== undefined) params.set('handoff_eligible', String(filters.handoff_eligible))

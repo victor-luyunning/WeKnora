@@ -127,8 +127,11 @@ func bridgePagination(c *gin.Context) (page, pageSize int) {
 		}
 	}
 	if value := c.Query("page_size"); value != "" {
-		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 1 && parsed <= 100 {
-			pageSize = parsed
+		if parsed, err := strconv.Atoi(value); err == nil {
+			switch parsed {
+			case 20, 50, 100:
+				pageSize = parsed
+			}
 		}
 	}
 	return page, pageSize

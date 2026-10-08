@@ -86,7 +86,8 @@
         </div>
         <t-empty v-if="overview.mirrors.length === 0" :description="t('system.globalSettings.fmsBridge.mirrors.empty')" />
         <div v-else class="data-table-shell fms-bridge__table-shell">
-          <t-table class="fms-bridge__table" row-key="id" :data="overview.mirrors" :columns="columns" hover @row-click="openDetail">
+          <div class="fms-bridge__table-scroll">
+            <t-table class="fms-bridge__table" row-key="id" :data="overview.mirrors" :columns="columns" hover @row-click="openDetail">
             <template #book="{ row }">
               <div class="fms-bridge__book">
                 <strong>{{ row.book.title || t('system.globalSettings.fmsBridge.mirrors.untitled') }}</strong>
@@ -108,9 +109,10 @@
                 </t-button>
               </div>
             </template>
-          </t-table>
+            </t-table>
+          </div>
           <div v-if="overview.mirror_count > overview.page_size" class="data-table-shell__pager">
-            <t-pagination v-model="page" :total="overview.mirror_count" :page-size="overview.page_size" size="small" show-jumper show-page-number @change="onPageChange" />
+            <t-pagination v-model="page" v-model:page-size="pageSize" :total="overview.mirror_count" size="small" show-jumper show-page-number show-page-size :page-size-options="PAGE_SIZE_OPTIONS" @change="onPageChange" />
           </div>
         </div>
       </section>
@@ -199,6 +201,9 @@ const detailLoading = ref(false)
 const detailError = ref('')
 const selectedMirror = ref<FMSMirrorDetail>()
 const page = ref(1)
+const pageSize = ref<20 | 50 | 100>(100)
+const loadedPageSize = ref<20 | 50 | 100>(100)
+const PAGE_SIZE_OPTIONS = [20, 50, 100]
 const filters = ref<{ query: string; readiness_status: string; handoff_eligible?: boolean }>({ query: '', readiness_status: '' })
 
 const columns = computed(() => [
@@ -213,8 +218,10 @@ const reload = async () => {
   loading.value = true
   error.value = ''
   try {
-    overview.value = await getFMSBridgeOverview({ page: page.value, ...filters.value })
+    overview.value = await getFMSBridgeOverview({ page: page.value, page_size: pageSize.value, ...filters.value })
     page.value = overview.value.page
+    pageSize.value = overview.value.page_size as 20 | 50 | 100
+    loadedPageSize.value = pageSize.value
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : t('system.globalSettings.fmsBridge.errors.load')
   } finally {
@@ -227,8 +234,10 @@ const applyFilters = () => {
   void reload()
 }
 
-const onPageChange = (nextPage: number) => {
-  page.value = nextPage
+const onPageChange = ({ current, pageSize: nextPageSize }: { current: number; pageSize: 20 | 50 | 100 }) => {
+  const sizeChanged = nextPageSize !== loadedPageSize.value
+  pageSize.value = nextPageSize
+  page.value = sizeChanged ? 1 : current
   void reload()
 }
 
@@ -304,9 +313,13 @@ onMounted(() => { void reload() })
 .fms-bridge__mirror-list { padding-top: 4px; }
 .fms-bridge__filters { display: grid; grid-template-columns: minmax(240px, 1fr) 180px 180px auto; gap: 10px; margin: 16px 0; }
 .fms-bridge__updated { color: var(--td-text-color-secondary); font-size: 13px; display: inline-flex; gap: 5px; align-items: center; }
-.fms-bridge__table-shell { max-width: 100%; overflow-x: auto; border: 1px solid var(--td-component-stroke); border-radius: var(--app-radius-lg); background: var(--td-bg-color-container); }
-.fms-bridge__table-shell :deep(.t-table) { min-width: 872px; }
-.fms-bridge__table-shell :deep(.t-table th), .fms-bridge__table-shell :deep(.t-table td) { vertical-align: middle; }
+.fms-bridge__table-shell { display: flex; flex-direction: column; max-width: 100%; overflow: hidden; border: 1px solid var(--td-component-stroke); border-radius: var(--app-radius-lg); background: var(--td-bg-color-container); }
+.fms-bridge__table-scroll { min-width: 0; overflow-x: auto; }
+.fms-bridge__table-scroll :deep(.t-table) { min-width: 872px; }
+.fms-bridge__table-scroll :deep(.t-table th), .fms-bridge__table-scroll :deep(.t-table td) { vertical-align: middle; }
+.fms-bridge__table-shell .data-table-shell__pager { flex-shrink: 0; display: flex; align-items: center; padding: 10px 16px; border-top: 1px solid var(--td-component-stroke); background: var(--td-bg-color-container); }
+.fms-bridge__table-shell .data-table-shell__pager :deep(.t-pagination) { align-items: center; }
+.fms-bridge__table-shell .data-table-shell__pager :deep(.t-pagination__total) { display: flex; align-items: center; min-height: var(--td-comp-size-xs); }
 .fms-bridge__table-actions { display: inline-flex; align-items: center; gap: 12px; min-width: 150px; white-space: nowrap; }
 .fms-bridge__book { display: grid; gap: 3px; min-width: 0; }
 .fms-bridge__book strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
