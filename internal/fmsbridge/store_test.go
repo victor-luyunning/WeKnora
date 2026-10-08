@@ -27,7 +27,7 @@ func TestGormStoreKeepsOnlyLatestRevisionPerFMSProjection(t *testing.T) {
 		t.Fatalf("upsert latest revision: %v", err)
 	}
 
-	mirrors, total, err := store.ListMirrors(ctx, 10)
+	mirrors, total, err := store.ListMirrors(ctx, 1, 100, MirrorListFilter{})
 	if err != nil {
 		t.Fatalf("list mirrors: %v", err)
 	}
@@ -74,12 +74,49 @@ func TestGormStoreKeepsDifferentFMSProjectionAssetsSeparate(t *testing.T) {
 		}
 	}
 
-	_, total, err := store.ListMirrors(ctx, 10)
+	_, total, err := store.ListMirrors(ctx, 1, 100, MirrorListFilter{})
 	if err != nil {
 		t.Fatalf("list mirrors: %v", err)
 	}
 	if total != 2 {
 		t.Fatalf("mirror count = %d, want two assets from one archive record", total)
+	}
+}
+
+func TestGormStoreListsMirrorsByPageAndFilter(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:fmsbridge-store-list?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&mirrorRow{}, &artifactRow{}, &retrievalUnitRow{}, &syncRunRow{}); err != nil {
+		t.Fatalf("migrate mirror tables: %v", err)
+	}
+	store := NewGormStore(db)
+	ctx := context.Background()
+	for _, snapshot := range []Snapshot{
+		latestOnlyTestSnapshot("record-a", "asset-a", "revision-a", "biology"),
+		latestOnlyTestSnapshot("record-b", "asset-b", "revision-b", "history"),
+		latestOnlyTestSnapshot("record-c", "asset-c", "revision-c", "physics"),
+	} {
+		if err := store.UpsertSnapshot(ctx, snapshot); err != nil {
+			t.Fatalf("upsert projection: %v", err)
+		}
+	}
+
+	rows, total, err := store.ListMirrors(ctx, 2, 1, MirrorListFilter{})
+	if err != nil {
+		t.Fatalf("list second page: %v", err)
+	}
+	if total != 3 || len(rows) != 1 {
+		t.Fatalf("page result = total %d, rows %d; want total 3 and one row", total, len(rows))
+	}
+
+	rows, total, err = store.ListMirrors(ctx, 1, 100, MirrorListFilter{Query: "physics"})
+	if err != nil {
+		t.Fatalf("filter mirrors: %v", err)
+	}
+	if total != 1 || len(rows) != 1 || rows[0].Book.Title != "Book 1" {
+		t.Fatalf("filtered result = total %d, rows %#v; want the physics book", total, rows)
 	}
 }
 
@@ -104,7 +141,7 @@ func latestOnlyTestSnapshot(recordID, assetID, revisionKey, suffix string) Snaps
 		ArchiveRecordID: recordID,
 		AssetID:         assetID,
 		SourceRef:       "fms:archive:" + recordID + ":asset:" + assetID,
-		Book:            BookMetadata{BookNo: "book-1", Title: "Book 1"},
+		Book:            BookMetadata{BookNo: "book-" + suffix, Title: "Book 1", Subject: suffix},
 		Revision: SourceRevision{
 			SourceChecksumSHA256: "checksum-" + suffix,
 			ParserVersion:        "parser-" + suffix,

@@ -7,13 +7,19 @@
 ```text
 外部同一个 FMS 地址
         │
-        └── /zswek/ ──> FMS frontend ──> 127.0.0.1:18083
-                                      │
+        └── /zswek/ ──> FMS frontend ──> host.docker.internal:18083
+                                      │       (服务器 Docker 网关：172.17.0.1)
                                       └── WeKnora frontend
-                                            └── WeKnora app
+                                            └── WeKnora app: app:8080
+
+WeKnora app ──> host.docker.internal:18002
+               (服务器 Docker 网关：172.17.0.1)
+                    └── FMS backend
 ```
 
-WeKnora 不新增公网端口，也不占用 FMS 的 `18082`。`18083` 只供服务器本机的 FMS frontend 访问。
+WeKnora 不新增公网端口，也不占用 FMS 的 `18082`。`18083` 和 `18002` 都是服务器内部桥接端口。
+注意：`127.0.0.1` 只对当前容器/当前宿主机回环接口可见，其他容器访问不到；FMS 与 WeKnora
+跨容器访问时，必须绑定 Docker host-gateway（本服务器实测为 `172.17.0.1`）。
 
 ## 1. 创建 WeKnora 项目环境
 
@@ -103,7 +109,7 @@ values = {
     "GIN_MODE": "release",
     "AUTO_MIGRATE": "true",
     "FRONTEND_PORT": "18083",
-    "FRONTEND_BIND_ADDRESS": "127.0.0.1",
+    "FRONTEND_BIND_ADDRESS": "172.17.0.1",
     "VITE_BASE_PATH": "/zswek/",
     "APP_BIND_ADDRESS": "127.0.0.1",
     "FRONTEND_BASE_URL": f"{origin}/zswek",
@@ -145,9 +151,12 @@ PY
 
 chmod 600 .env
 docker compose -f docker-compose.yml config --quiet
-docker compose -f docker-compose.yml build --pull app frontend docreader
-docker compose -f docker-compose.yml up -d
-docker compose -f docker-compose.yml ps
+BUILDKIT_PROGRESS=plain \
+APK_MIRROR_ARG=mirrors.aliyun.com \
+APT_MIRROR=http://mirrors.aliyun.com \
+docker compose -f docker-compose.yml build app frontend docreader
+docker compose -f docker-compose.yml up -d --no-build app frontend docreader
+docker compose -f docker-compose.yml ps app frontend docreader
 ```
 
 这段命令只依赖 FMS 已经写好的两个值：`CORS_ALLOWED_ORIGINS` 和 `FMS_WEKNORA_BRIDGE_TOKEN`。如果 FMS 的 `CORS_ALLOWED_ORIGINS` 还是示例中的 `localhost`，先把它改成实际浏览器访问的外部 origin；不能把 `127.0.0.1:18082` 当成外网地址。
@@ -167,7 +176,8 @@ PYTHON_PACKAGE_INDEX=https://mirrors.aliyun.com/pypi/simple/
 
 # WeKnora frontend：FMS frontend 代理到这里
 FRONTEND_PORT=18083
-FRONTEND_BIND_ADDRESS=127.0.0.1
+# FMS 容器通过 host.docker.internal 访问；本服务器网关为 172.17.0.1
+FRONTEND_BIND_ADDRESS=172.17.0.1
 VITE_BASE_PATH=/zswek/
 
 # WeKnora app：只绑定本机；容器内 frontend 仍通过 app:8080 访问它
@@ -277,6 +287,36 @@ extra_hosts:
   - "host.docker.internal:host-gateway"
 ```
 
+还必须确认 FMS backend 也绑定到 Docker host-gateway。当前服务器的正确写法是：
+
+```yaml
+ports:
+  - "172.17.0.1:${BACKEND_HOST_PORT:?BACKEND_HOST_PORT must be set}:8000"
+```
+
+如果这里仍是 `127.0.0.1:...:8000`，WeKnora app 虽然能解析
+`host.docker.internal`，但访问 FMS backend 仍会超时。先在服务器上确认网关地址：
+
+```bash
+docker exec WeKnora-app getent hosts host.docker.internal
+docker exec fms-production-frontend-1 getent hosts host.docker.internal
+```
+
+两边应返回同一个地址；若不是 `172.17.0.1`，以下配置中的地址全部替换为实际返回值。
+首次修复 FMS backend 绑定时，在服务器执行：
+
+```bash
+cd /srv/fms/app
+cp docker-compose.server.yml docker-compose.server.yml.bak
+sed -i 's#127\.0\.0\.1:${BACKEND_HOST_PORT#172.17.0.1:${BACKEND_HOST_PORT#' docker-compose.server.yml
+sh scripts/compose.sh production config --quiet
+sh scripts/compose.sh production up -d --no-build backend
+```
+
+这只是端口监听范围调整，不需要重建 FMS backend 镜像。以后更新 FMS 的
+`docker-compose.server.yml` 时，要保留这项绑定，否则 WeKnora 的 FMS 桥接会再次出现
+`context deadline exceeded`。
+
 ### 4.3 FMS 前端 Nginx
 
 文件：
@@ -322,7 +362,21 @@ https://<FMS外部域名>/zswek/
 ```bash
 cd /srv/weknora
 curl -fsS http://127.0.0.1:8080/health
-curl -fsSI http://127.0.0.1:18083/
+curl -fsSI http://172.17.0.1:18083/
+```
+
+再从容器内部验证跨容器链路：
+
+```bash
+docker exec WeKnora-app curl -fsS --max-time 10 http://host.docker.internal:18002/health
+docker exec fms-production-frontend-1 wget -S --spider -T 10 http://host.docker.internal:18083/ 2>&1
+```
+
+只有这两条都成功后，才在 FMS 页面点击 WeKnora 的“运行”。桥接失败时先看：
+
+```bash
+cd /srv/weknora
+docker compose -f docker-compose.yml logs --since=10m app | grep -E 'FMS|projection|failed|succeeded'
 ```
 
 再验证 FMS 代理：
@@ -353,28 +407,70 @@ sh scripts/compose.sh production logs --tail=200 frontend
 
 按顺序检查：
 
-1. `127.0.0.1:18083` 是否能访问 WeKnora frontend。
-2. FMS frontend 是否配置 `host.docker.internal:18083`。
-3. FMS frontend 是否配置 `host-gateway`。
-4. `VITE_BASE_PATH` 是否严格为 `/zswek/`，包含末尾 `/`。
-5. 外部访问是否使用 `/zswek/`，而不是 `/`。
+1. WeKnora frontend 是否绑定 `172.17.0.1:18083`，而不是只绑定 `127.0.0.1:18083`。
+2. FMS backend 是否绑定 `172.17.0.1:18002`，而不是只绑定 `127.0.0.1:18002`。
+3. FMS frontend 是否配置 `host.docker.internal:18083`。
+4. FMS frontend 和 WeKnora app 是否都配置 `host-gateway`。
+5. `VITE_BASE_PATH` 是否严格为 `/zswek/`，包含末尾 `/`。
+6. 外部访问是否使用 `/zswek/`，而不是 `/`。
 
-## 7. 更新当前项目
+## 7. 后续更新部署（以后照此执行）
+
+下面是服务器更新 WeKnora 的固定流程。默认只更新 WeKnora，不重启 FMS；`.env`、数据库卷、文件卷
+都会保留。先确认工作区没有服务器临时改动：
 
 ```bash
 cd /srv/weknora
 git fetch origin fms-weknora
 git checkout fms-weknora
 git pull --ff-only origin fms-weknora
+git status --short
 docker compose -f docker-compose.yml config --quiet
-docker compose -f docker-compose.yml build --pull app frontend docreader
-docker compose -f docker-compose.yml up -d
-docker compose -f docker-compose.yml ps
+BUILDKIT_PROGRESS=plain \
+APK_MIRROR_ARG=mirrors.aliyun.com \
+APT_MIRROR=http://mirrors.aliyun.com \
+docker compose -f docker-compose.yml build app frontend docreader
+docker compose -f docker-compose.yml up -d --no-build app frontend docreader
+docker compose -f docker-compose.yml ps app frontend docreader
+curl -fsS http://127.0.0.1:8080/health
+curl -fsSI http://172.17.0.1:18083/
+docker exec WeKnora-app curl -fsS --max-time 10 http://host.docker.internal:18002/health
 ```
 
+第一次部署、明确要刷新基础镜像或需要获取安全更新时，才把构建命令改成：
+
+```bash
+BUILDKIT_PROGRESS=plain \
+APK_MIRROR_ARG=mirrors.aliyun.com \
+APT_MIRROR=http://mirrors.aliyun.com \
+docker compose -f docker-compose.yml build --pull app frontend docreader
+```
+
+`--pull` 只刷新 Dockerfile 中 `FROM` 的基础镜像，不是启动参数；它可能让原本命中的缓存失效，
+因此日常更新不要每次都加。`BUILDKIT_PROGRESS=plain` 用于显示真实步骤，避免终端只看到长时间停在
+`86/94` 而无法判断是否仍在工作。
+
 只更新 WeKnora 不需要重启 FMS backend。只有 FMS 的 `/zswek/` 代理配置变化时，才重启 FMS frontend。
+如果 FMS backend 的绑定配置变化，执行 `sh scripts/compose.sh production up -d --no-build backend`；
+不需要重新构建镜像。
+
+点击 FMS 的 WeKnora“运行”前，必须先通过本节最后一条 `docker exec WeKnora-app ...:18002/health`
+检查。网络检查失败时不要重复点击“运行”，也不需要重新构建 WeKnora。
 
 不要执行 `docker compose down -v`，否则会删除 WeKnora 的数据库和文件卷。
+
+## 8. 2026-09-30 现场验证记录
+
+- 服务器为 `amd64`；`app`、`frontend`、`docreader` 三个镜像均已成功构建，产物分别为
+  `wechatopenai/weknora-app:0.8.0`、`wechatopenai/weknora-ui:0.8.0` 和
+  `wechatopenai/weknora-docreader:0.8.0`。
+- `RedundantTargetPlatform` 只是 Dockerfile 的冗余平台声明警告，不是构建失败原因。
+- `86/94` 长时间不动时，优先用本文件的 `BUILDKIT_PROGRESS=plain` 命令观察；服务器资源和磁盘正常时，
+  可能只是 Rust 编译或镜像导出阶段较慢。
+- 本次 FMS 桥接失败的根因是容器访问 `host.docker.internal` 时到达
+  `172.17.0.1`，但 FMS backend/WeKnora frontend 曾只监听 `127.0.0.1`。修复绑定后无需重建镜像，
+  先做容器内健康检查，再运行桥接。
+- 日志中的 Langfuse DNS/遥测告警与 FMS 桥接网络失败是两件事，不能用它判断桥接失败原因。
 
 ## 相关文档
 

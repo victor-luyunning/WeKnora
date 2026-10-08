@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Tencent/WeKnora/internal/types"
@@ -247,29 +248,55 @@ type syncRunRow struct {
 
 func (syncRunRow) TableName() string { return "fms_sync_runs" }
 
-func (s *GormStore) ListMirrors(ctx context.Context, limit int) ([]MirrorSummary, int64, error) {
+func (s *GormStore) ListMirrors(ctx context.Context, page, pageSize int, filter MirrorListFilter) ([]MirrorSummary, int64, error) {
 	if s == nil || s.db == nil {
 		return nil, 0, fmt.Errorf("FMS mirror store is not configured")
 	}
-	if limit < 1 || limit > 100 {
-		return nil, 0, fmt.Errorf("FMS mirror limit must be between 1 and 100")
+	if page < 1 {
+		return nil, 0, fmt.Errorf("FMS mirror page must be positive")
+	}
+	if pageSize < 1 || pageSize > 100 {
+		return nil, 0, fmt.Errorf("FMS mirror page size must be between 1 and 100")
+	}
+	query := s.db.WithContext(ctx).Model(&mirrorRow{}).Where("source_system = ?", sourceSystemFMS)
+	if value := strings.TrimSpace(filter.Query); value != "" {
+		pattern := "%" + strings.ToLower(value) + "%"
+		query = query.Where("LOWER(book_title) LIKE ? OR LOWER(book_no) LIKE ? OR LOWER(book_subject) LIKE ?", pattern, pattern, pattern)
+	}
+	if value := strings.TrimSpace(filter.ReadinessStatus); value != "" {
+		query = query.Where("readiness_status = ?", value)
+	}
+	if filter.HandoffEligible != nil {
+		query = query.Where("handoff_eligible = ?", *filter.HandoffEligible)
 	}
 	var total int64
-	if err := s.db.WithContext(ctx).Model(&mirrorRow{}).Where("source_system = ?", sourceSystemFMS).Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	var rows []mirrorRow
-	if err := s.db.WithContext(ctx).Where("source_system = ?", sourceSystemFMS).
-		Order("last_synced_at DESC").Limit(limit).Find(&rows).Error; err != nil {
+	if err := query.Order("last_synced_at DESC, id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
 		return nil, 0, err
+	}
+	unitCounts := make(map[string]int64, len(rows))
+	if len(rows) > 0 {
+		mirrorIDs := make([]string, 0, len(rows))
+		for _, row := range rows {
+			mirrorIDs = append(mirrorIDs, row.ID)
+		}
+		var counts []struct {
+			MirrorID string
+			Count    int64
+		}
+		if err := s.db.WithContext(ctx).Model(&retrievalUnitRow{}).Select("mirror_id, COUNT(*) AS count").Where("mirror_id IN ?", mirrorIDs).Group("mirror_id").Scan(&counts).Error; err != nil {
+			return nil, 0, err
+		}
+		for _, count := range counts {
+			unitCounts[count.MirrorID] = count.Count
+		}
 	}
 	result := make([]MirrorSummary, 0, len(rows))
 	for _, row := range rows {
-		var unitCount int64
-		if err := s.db.WithContext(ctx).Model(&retrievalUnitRow{}).Where("mirror_id = ?", row.ID).Count(&unitCount).Error; err != nil {
-			return nil, 0, err
-		}
-		result = append(result, mirrorSummaryFromRow(row, unitCount))
+		result = append(result, mirrorSummaryFromRow(row, unitCounts[row.ID]))
 	}
 	return result, total, nil
 }

@@ -50,7 +50,9 @@ values = {
     "GIN_MODE": "release",
     "AUTO_MIGRATE": "true",
     "FRONTEND_PORT": "18083",
-    "FRONTEND_BIND_ADDRESS": "127.0.0.1",
+    # FMS containers reach WeKnora through host.docker.internal, which resolves
+    # to the Docker host-gateway address on the production server.
+    "FRONTEND_BIND_ADDRESS": "172.17.0.1",
     "VITE_BASE_PATH": "/zswek/",
     "APP_BIND_ADDRESS": "127.0.0.1",
     "FRONTEND_BASE_URL": f"{origin}/zswek",

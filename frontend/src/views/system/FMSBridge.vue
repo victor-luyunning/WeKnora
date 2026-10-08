@@ -69,6 +69,21 @@
             <t-icon name="time" />{{ formatTime(overview.latest_run.finished_at) }}
           </span>
         </div>
+        <div class="fms-bridge__filters">
+          <t-input v-model="filters.query" clearable :placeholder="t('system.globalSettings.fmsBridge.mirrors.filters.query')" @enter="applyFilters">
+            <template #prefix-icon><t-icon name="search" /></template>
+          </t-input>
+          <t-select v-model="filters.readiness_status" clearable :placeholder="t('system.globalSettings.fmsBridge.mirrors.filters.readiness')" @change="applyFilters">
+            <t-option value="pass" :label="t('system.globalSettings.fmsBridge.mirrors.readinessOptions.pass')" />
+            <t-option value="review" :label="t('system.globalSettings.fmsBridge.mirrors.readinessOptions.review')" />
+            <t-option value="unknown" :label="t('system.globalSettings.fmsBridge.mirrors.readinessOptions.unknown')" />
+          </t-select>
+          <t-select v-model="filters.handoff_eligible" clearable :placeholder="t('system.globalSettings.fmsBridge.mirrors.filters.handoff')" @change="applyFilters">
+            <t-option :value="true" :label="t('system.globalSettings.fmsBridge.mirrors.handoffOptions.yes')" />
+            <t-option :value="false" :label="t('system.globalSettings.fmsBridge.mirrors.handoffOptions.no')" />
+          </t-select>
+          <t-button theme="default" variant="outline" @click="applyFilters">{{ t('system.globalSettings.fmsBridge.mirrors.filters.apply') }}</t-button>
+        </div>
         <t-empty v-if="overview.mirrors.length === 0" :description="t('system.globalSettings.fmsBridge.mirrors.empty')" />
         <div v-else class="data-table-shell fms-bridge__table-shell">
           <t-table class="fms-bridge__table" row-key="id" :data="overview.mirrors" :columns="columns" hover @row-click="openDetail">
@@ -94,6 +109,9 @@
               </div>
             </template>
           </t-table>
+          <div v-if="overview.mirror_count > overview.page_size" class="data-table-shell__pager">
+            <t-pagination v-model="page" :total="overview.mirror_count" :page-size="overview.page_size" size="small" show-jumper show-page-number @change="onPageChange" />
+          </div>
         </div>
       </section>
       <t-alert v-if="(overview.latest_run?.summary.failed ?? 0) > 0" theme="warning" class="fms-bridge__alert">
@@ -180,6 +198,8 @@ const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailError = ref('')
 const selectedMirror = ref<FMSMirrorDetail>()
+const page = ref(1)
+const filters = ref<{ query: string; readiness_status: string; handoff_eligible?: boolean }>({ query: '', readiness_status: '' })
 
 const columns = computed(() => [
   { colKey: 'book', title: t('system.globalSettings.fmsBridge.mirrors.columns.book'), width: 250 },
@@ -193,12 +213,23 @@ const reload = async () => {
   loading.value = true
   error.value = ''
   try {
-    overview.value = await getFMSBridgeOverview()
+    overview.value = await getFMSBridgeOverview({ page: page.value, ...filters.value })
+    page.value = overview.value.page
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : t('system.globalSettings.fmsBridge.errors.load')
   } finally {
     loading.value = false
   }
+}
+
+const applyFilters = () => {
+  page.value = 1
+  void reload()
+}
+
+const onPageChange = (nextPage: number) => {
+  page.value = nextPage
+  void reload()
 }
 
 const startSync = async () => {
@@ -271,6 +302,7 @@ onMounted(() => { void reload() })
 .fms-bridge__metric--warning strong, .fms-bridge__run--failed { color: var(--td-warning-color); }
 .fms-bridge__run--completed { color: var(--td-success-color); }
 .fms-bridge__mirror-list { padding-top: 4px; }
+.fms-bridge__filters { display: grid; grid-template-columns: minmax(240px, 1fr) 180px 180px auto; gap: 10px; margin: 16px 0; }
 .fms-bridge__updated { color: var(--td-text-color-secondary); font-size: 13px; display: inline-flex; gap: 5px; align-items: center; }
 .fms-bridge__table-shell { max-width: 100%; overflow-x: auto; border: 1px solid var(--td-component-stroke); border-radius: var(--app-radius-lg); background: var(--td-bg-color-container); }
 .fms-bridge__table-shell :deep(.t-table) { min-width: 872px; }
@@ -293,5 +325,5 @@ onMounted(() => { void reload() })
 .fms-bridge__unit-meta { display: flex; flex-wrap: wrap; gap: 8px; color: var(--td-text-color-secondary); font-size: 12px; }
 .fms-bridge__unit p { margin: 8px 0; white-space: pre-wrap; line-height: 1.6; }
 .fms-bridge__unit code { display: block; overflow-wrap: anywhere; color: var(--td-text-color-secondary); font-size: 12px; }
-@media (max-width: 860px) { .fms-bridge__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .fms-bridge__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fms-bridge__filters { grid-template-columns: 1fr 1fr; } }
 </style>

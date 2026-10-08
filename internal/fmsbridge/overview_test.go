@@ -35,7 +35,7 @@ func TestRuntimeServiceExposesMirrorOverviewAndRetrievalPreview(t *testing.T) {
 	}
 
 	service := NewRuntimeService(db, &recordingTaskEnqueuer{})
-	overview, err := service.Overview(context.Background(), 20)
+	overview, err := service.Overview(context.Background(), 1, 100, MirrorListFilter{})
 	if err != nil {
 		t.Fatalf("Overview: %v", err)
 	}

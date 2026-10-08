@@ -3545,7 +3545,7 @@ export default {
         navLabel: 'FMS 承接镜像', title: 'FMS 投影镜像', description: '查看从 FMS 单向承接的只读投影，并手动发起一次同步。',
         actions: { sync: '发起同步', refresh: '刷新', retry: '重试', retryMirror: '重试此书' }, notConfigured: { title: 'FMS 来源尚未配置', description: '请先在部署环境中配置 FMS 来源身份，再发起同步。' },
         summary: { title: '镜像概览', mirrors: '已镜像版本', lastStatus: '最近一次运行', lastSuccess: '最近成功', lastFailed: '最近失败', noRun: '尚未运行', failureDetails: '失败详情' },
-        mirrors: { title: '已承接的来源书目', description: '这里是可重建的本地镜像；打开明细不会直接读取 FMS 存储。', empty: '尚未承接任何 FMS 投影。', untitled: '未命名 FMS 图书', inspect: '查看', columns: { book: '来源书目', readiness: 'FMS 就绪状态', units: '检索单元', syncedAt: '最近同步' } },
+        mirrors: { title: '已承接的来源书目', description: '这里是可重建的本地镜像；打开明细不会直接读取 FMS 存储。', empty: '尚未承接任何 FMS 投影。', untitled: '未命名 FMS 图书', inspect: '查看', filters: { query: '搜索书名、书号或学科', readiness: 'FMS 就绪状态', handoff: '可承接状态', apply: '筛选' }, readinessOptions: { pass: '通过', review: '待复核', unknown: '未知' }, handoffOptions: { yes: '可承接', no: '不可承接' }, columns: { book: '来源书目', readiness: 'FMS 就绪状态', units: '检索单元', syncedAt: '最近同步' } },
         detail: { title: 'FMS 镜像明细', source: '来源标识', bookNo: '书号', subject: '学科', sourceRef: '来源引用', revision: '版本标识', artifacts: '已发布工件', available: '可用', unavailable: '不可用', units: '检索单元预览', unitsDescription: '正文投影的有限预览；此处不会重新处理来源图书。' },
         messages: { queued: '已将 FMS 同步加入队列。', mirrorQueued: '已将此书的 FMS 同步加入队列。' }, errors: { load: '加载 FMS 镜像失败。', sync: '加入 FMS 同步队列失败。', detail: '加载 FMS 镜像明细失败。', mirrorSync: '加入此书同步队列失败。' },
       },

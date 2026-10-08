@@ -65,6 +65,8 @@ export interface FMSBridgeOverview {
   enabled: boolean
   configuration_issue?: string
   mirror_count: number
+  page: number
+  page_size: number
   latest_run?: FMSSyncRunSummary
   mirrors: FMSMirrorSummary[]
 }
@@ -91,8 +93,19 @@ export interface FMSMirrorDetail extends FMSMirrorSummary {
   retrieval_units: FMSRetrievalUnitPreview[]
 }
 
-export function getFMSBridgeOverview(limit = 30): Promise<FMSBridgeOverview> {
-  return get(`/api/v1/system/admin/fms-bridge?limit=${limit}`)
+export interface FMSBridgeMirrorFilters {
+  page?: number
+  query?: string
+  readiness_status?: string
+  handoff_eligible?: boolean
+}
+
+export function getFMSBridgeOverview(filters: FMSBridgeMirrorFilters = {}): Promise<FMSBridgeOverview> {
+  const params = new URLSearchParams({ page: String(filters.page || 1), page_size: '100' })
+  if (filters.query?.trim()) params.set('query', filters.query.trim())
+  if (filters.readiness_status) params.set('readiness_status', filters.readiness_status)
+  if (filters.handoff_eligible !== undefined) params.set('handoff_eligible', String(filters.handoff_eligible))
+  return get(`/api/v1/system/admin/fms-bridge?${params.toString()}`)
 }
 
 export function getFMSBridgeMirrorDetail(id: string, limit = 50): Promise<FMSMirrorDetail> {

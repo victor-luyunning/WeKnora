@@ -188,8 +188,18 @@ type BridgeOverview struct {
 	Enabled            bool            `json:"enabled"`
 	ConfigurationIssue string          `json:"configuration_issue,omitempty"`
 	MirrorCount        int64           `json:"mirror_count"`
+	Page               int             `json:"page"`
+	PageSize           int             `json:"page_size"`
 	LatestRun          *SyncRunSummary `json:"latest_run,omitempty"`
 	Mirrors            []MirrorSummary `json:"mirrors"`
+}
+
+// MirrorListFilter controls the administrative list only. It never changes
+// what has been mirrored, and intentionally exposes no FMS connection data.
+type MirrorListFilter struct {
+	Query           string
+	ReadinessStatus string
+	HandoffEligible *bool
 }
 
 type MirrorSummary struct {

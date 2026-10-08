@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Tencent/WeKnora/internal/fmsbridge"
 	"github.com/gin-gonic/gin"
@@ -69,7 +70,17 @@ func (h *FMSBridgeHandler) Overview(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "FMS bridge is unavailable"})
 		return
 	}
-	overview, err := h.service.Overview(c.Request.Context(), bridgeLimit(c, 30))
+	page, pageSize := bridgePagination(c)
+	handoffEligible, validHandoffEligible := bridgeBoolFilter(c, "handoff_eligible")
+	if !validHandoffEligible {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "handoff_eligible must be true or false"})
+		return
+	}
+	overview, err := h.service.Overview(c.Request.Context(), page, pageSize, fmsbridge.MirrorListFilter{
+		Query:           strings.TrimSpace(c.Query("query")),
+		ReadinessStatus: strings.TrimSpace(c.Query("readiness_status")),
+		HandoffEligible: handoffEligible,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read FMS bridge overview"})
 		return
@@ -106,4 +117,31 @@ func bridgeLimit(c *gin.Context, fallback int) int {
 		return fallback
 	}
 	return parsed
+}
+
+func bridgePagination(c *gin.Context) (page, pageSize int) {
+	page, pageSize = 1, 100
+	if value := c.Query("page"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+	if value := c.Query("page_size"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil && parsed >= 1 && parsed <= 100 {
+			pageSize = parsed
+		}
+	}
+	return page, pageSize
+}
+
+func bridgeBoolFilter(c *gin.Context, key string) (*bool, bool) {
+	value := strings.TrimSpace(c.Query(key))
+	if value == "" {
+		return nil, true
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return nil, false
+	}
+	return &parsed, true
 }

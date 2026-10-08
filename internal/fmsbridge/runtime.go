@@ -80,18 +80,18 @@ func (s *RuntimeService) enqueueReconcile(payloadData ReconcilePayload) (*asynq.
 }
 
 // Overview is a read-only administrative projection of the local FMS mirror.
-func (s *RuntimeService) Overview(ctx context.Context, limit int) (BridgeOverview, error) {
+func (s *RuntimeService) Overview(ctx context.Context, page, pageSize int, filter MirrorListFilter) (BridgeOverview, error) {
 	if s == nil || s.db == nil {
 		return BridgeOverview{}, fmt.Errorf("FMS bridge database is not configured")
 	}
-	overview := BridgeOverview{Mirrors: []MirrorSummary{}}
+	overview := BridgeOverview{Mirrors: []MirrorSummary{}, Page: page, PageSize: pageSize}
 	if _, enabled, err := ConfigFromEnvironment(); err != nil {
 		overview.ConfigurationIssue = "FMS source configuration is incomplete"
 	} else {
 		overview.Enabled = enabled
 	}
 	store := NewGormStore(s.db)
-	mirrors, count, err := store.ListMirrors(ctx, limit)
+	mirrors, count, err := store.ListMirrors(ctx, page, pageSize, filter)
 	if err != nil {
 		return BridgeOverview{}, err
 	}

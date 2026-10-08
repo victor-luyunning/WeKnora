@@ -13,5 +13,8 @@ test('FMS bridge management page keeps the mirror inspection and sync entrypoint
   assert.match(source, /SettingDrawer/)
   assert.match(source, /retrieval_units/)
   assert.match(source, /failureEntries/)
+  assert.match(source, /t-pagination/)
+  assert.match(source, /handoff_eligible/)
+  assert.match(source, /filters\.query/)
   assert.doesNotMatch(source, /vector|qdrant|embedding/i)
 })
