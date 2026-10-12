@@ -24,10 +24,18 @@ export async function deletePlatformAPIKey(keyId: number): Promise<{ success: bo
   return await del(`/api/v1/system/admin/api-keys/${keyId}`) as unknown as { success: boolean }
 }
 
+export interface FMSStandardClassification {
+  primary_code: string
+  secondary_code: string | null
+  related_secondary_codes: string[]
+  cip_code: string | null
+}
+
 export interface FMSBookMetadata {
   book_no: string
   title: string
   subject: string
+  standard_classification?: FMSStandardClassification | null
 }
 
 export interface FMSSyncRunMetrics {

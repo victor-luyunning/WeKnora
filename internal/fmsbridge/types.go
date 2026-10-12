@@ -155,9 +155,19 @@ type FutureSyncPackage struct {
 // BookMetadata is the small FMS-published catalogue summary that makes an
 // administrative mirror understandable without duplicating FMS's book model.
 type BookMetadata struct {
-	BookNo  string `json:"book_no"`
-	Title   string `json:"title"`
-	Subject string `json:"subject"`
+	BookNo                 string                  `json:"book_no"`
+	Title                  string                  `json:"title"`
+	Subject                string                  `json:"subject"`
+	StandardClassification *StandardClassification `json:"standard_classification"`
+}
+
+// StandardClassification is the FMS-published CIP routing hint. It is book
+// metadata only: WeKnora must not use it as an exclusive retrieval filter.
+type StandardClassification struct {
+	PrimaryCode           string   `json:"primary_code"`
+	SecondaryCode         *string  `json:"secondary_code"`
+	RelatedSecondaryCodes []string `json:"related_secondary_codes"`
+	CIPCode               *string  `json:"cip_code"`
 }
 
 type projectionDetail struct {

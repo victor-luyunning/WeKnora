@@ -86,6 +86,9 @@ func TestAdapterFetchesEligibleProjectionAndAllRequiredSidecars(t *testing.T) {
 	if snapshot.ReadinessStatus != "review" || !snapshot.HandoffEligible {
 		t.Fatalf("review projection was not admitted: %#v", snapshot)
 	}
+	if snapshot.Book.StandardClassification == nil || snapshot.Book.StandardClassification.PrimaryCode != "F" {
+		t.Fatalf("classification = %#v", snapshot.Book.StandardClassification)
+	}
 	if got := len(snapshot.Sidecars[ArtifactKindRetrievalUnits]); got != 2 {
 		t.Fatalf("retrieval_units pages = %d, want 2", got)
 	}
@@ -203,7 +206,11 @@ func writeProjectionDetail(t *testing.T, w http.ResponseWriter, recordID, assetI
 		"readiness_status":         readiness,
 		"weknora_handoff_eligible": eligible,
 		"future_sync_package": map[string]any{
-			"source_ref":               "fms:archive:" + recordID + ":asset:" + assetID,
+			"source_ref": "fms:archive:" + recordID + ":asset:" + assetID,
+			"book": map[string]any{
+				"book_no": "9787000000001", "title": "财经英语口语", "subject": "英语",
+				"standard_classification": map[string]any{"primary_code": "F", "secondary_code": nil, "related_secondary_codes": []string{}, "cip_code": "F"},
+			},
 			"projection_state":         "ready",
 			"readiness_status":         readiness,
 			"weknora_handoff_eligible": eligible,

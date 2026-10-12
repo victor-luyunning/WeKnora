@@ -86,6 +86,7 @@ func mirrorRowFromSnapshot(snapshot Snapshot, now time.Time) mirrorRow {
 		BookNo:               snapshot.Book.BookNo,
 		BookTitle:            snapshot.Book.Title,
 		BookSubject:          snapshot.Book.Subject,
+		BookClassification:   mustJSON(snapshot.Book.StandardClassification),
 		SourceChecksumSHA256: snapshot.Revision.SourceChecksumSHA256,
 		ParserVersion:        snapshot.Revision.ParserVersion,
 		SegmentPolicyVersion: snapshot.Revision.SegmentPolicyVersion,
@@ -110,6 +111,7 @@ func mirrorValues(snapshot Snapshot, now time.Time) map[string]any {
 		"book_no":                snapshot.Book.BookNo,
 		"book_title":             snapshot.Book.Title,
 		"book_subject":           snapshot.Book.Subject,
+		"book_classification":    mustJSON(snapshot.Book.StandardClassification),
 		"source_checksum_sha256": snapshot.Revision.SourceChecksumSHA256,
 		"parser_version":         snapshot.Revision.ParserVersion,
 		"segment_policy_version": snapshot.Revision.SegmentPolicyVersion,
@@ -198,6 +200,7 @@ type mirrorRow struct {
 	BookNo               string     `gorm:"type:text;not null"`
 	BookTitle            string     `gorm:"type:text;not null"`
 	BookSubject          string     `gorm:"type:text;not null"`
+	BookClassification   types.JSON `gorm:"type:jsonb;not null;default:'{}'"`
 	SourceChecksumSHA256 string     `gorm:"type:varchar(64);not null"`
 	ParserVersion        string     `gorm:"type:text;not null"`
 	SegmentPolicyVersion string     `gorm:"type:text;not null"`
@@ -374,10 +377,21 @@ func mirrorSummaryFromRow(row mirrorRow, unitCount int64) MirrorSummary {
 	return MirrorSummary{
 		ID: row.ID, SourceRef: row.SourceRef, RevisionKey: row.RevisionKey,
 		ArchiveRecordID: row.ArchiveRecordID, AssetID: row.AssetID,
-		Book:            BookMetadata{BookNo: row.BookNo, Title: row.BookTitle, Subject: row.BookSubject},
+		Book:            BookMetadata{BookNo: row.BookNo, Title: row.BookTitle, Subject: row.BookSubject, StandardClassification: standardClassificationFromJSON(row.BookClassification)},
 		ProjectionState: row.ProjectionState, ReadinessStatus: row.ReadinessStatus,
 		HandoffEligible: row.HandoffEligible, RetrievalUnitCount: unitCount, LastSyncedAt: row.LastSyncedAt,
 	}
+}
+
+func standardClassificationFromJSON(value types.JSON) *StandardClassification {
+	if len(value) == 0 || string(value) == "null" || string(value) == "{}" {
+		return nil
+	}
+	classification := new(StandardClassification)
+	if err := json.Unmarshal(value, classification); err != nil || classification.PrimaryCode == "" {
+		return nil
+	}
+	return classification
 }
 
 func snapshotRows(snapshot Snapshot) ([]artifactRow, []retrievalUnitRow, error) {

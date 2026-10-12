@@ -91,7 +91,7 @@
             <template #book="{ row }">
               <div class="fms-bridge__book">
                 <strong>{{ row.book.title || t('system.globalSettings.fmsBridge.mirrors.untitled') }}</strong>
-                <span>{{ row.book.book_no || row.book.subject || '—' }}</span>
+                <span>{{ row.book.book_no || row.book.subject || '—' }} · {{ classificationLabel(row.book.standard_classification) }}</span>
               </div>
             </template>
             <template #readiness_status="{ row }">
@@ -145,6 +145,7 @@
           <dl class="fms-bridge__fields">
             <div><dt>{{ t('system.globalSettings.fmsBridge.detail.bookNo') }}</dt><dd>{{ selectedMirror.book.book_no || '—' }}</dd></div>
             <div><dt>{{ t('system.globalSettings.fmsBridge.detail.subject') }}</dt><dd>{{ selectedMirror.book.subject || '—' }}</dd></div>
+            <div><dt>CIP</dt><dd>{{ classificationLabel(selectedMirror.book.standard_classification) }}</dd></div>
             <div><dt>{{ t('system.globalSettings.fmsBridge.detail.sourceRef') }}</dt><dd class="mono">{{ selectedMirror.source_ref }}</dd></div>
             <div><dt>{{ t('system.globalSettings.fmsBridge.detail.revision') }}</dt><dd class="mono">{{ selectedMirror.revision_key }}</dd></div>
           </dl>
@@ -213,6 +214,11 @@ const columns = computed(() => [
   { colKey: 'last_synced_at', title: t('system.globalSettings.fmsBridge.mirrors.columns.syncedAt'), width: 180 },
   { colKey: 'action', title: '', width: 172, fixed: 'right' as const },
 ])
+
+const classificationLabel = (classification?: { primary_code: string; secondary_code: string | null } | null) => {
+  if (!classification?.primary_code) return '—'
+  return classification.secondary_code ? `${classification.primary_code} / ${classification.secondary_code}` : classification.primary_code
+}
 
 const reload = async () => {
   loading.value = true

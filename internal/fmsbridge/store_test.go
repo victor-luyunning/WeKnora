@@ -37,6 +37,9 @@ func TestGormStoreKeepsOnlyLatestRevisionPerFMSProjection(t *testing.T) {
 	if mirrors[0].RevisionKey != "revision-2" {
 		t.Fatalf("revision = %q, want latest revision", mirrors[0].RevisionKey)
 	}
+	if mirrors[0].Book.StandardClassification == nil || mirrors[0].Book.StandardClassification.PrimaryCode != "F" {
+		t.Fatalf("classification = %#v", mirrors[0].Book.StandardClassification)
+	}
 
 	var artifactCount int64
 	if err := db.Model(&artifactRow{}).Count(&artifactCount).Error; err != nil {
@@ -141,7 +144,7 @@ func latestOnlyTestSnapshot(recordID, assetID, revisionKey, suffix string) Snaps
 		ArchiveRecordID: recordID,
 		AssetID:         assetID,
 		SourceRef:       "fms:archive:" + recordID + ":asset:" + assetID,
-		Book:            BookMetadata{BookNo: "book-" + suffix, Title: "Book 1", Subject: suffix},
+		Book:            BookMetadata{BookNo: "book-" + suffix, Title: "Book 1", Subject: suffix, StandardClassification: &StandardClassification{PrimaryCode: "F", RelatedSecondaryCodes: []string{}}},
 		Revision: SourceRevision{
 			SourceChecksumSHA256: "checksum-" + suffix,
 			ParserVersion:        "parser-" + suffix,
